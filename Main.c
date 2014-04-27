@@ -2,16 +2,19 @@
 #include <libpic30.h>
 #include "Main.h"
 #include "tables.h"
-
+#include "Serial_A34405.h"
 
 _FOSCSEL(FRC_PLL);                          /* Internal FRC oscillator with PLL */
-_FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
-_FGS(CODE_PROT_OFF);                        /* Disable Code Protection */
+//_FOSC(CSW_FSCM_OFF & FRC_HI_RANGE);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
+//_FGS(CODE_PROT_OFF & GWRP_OFF);                        /* Disable Code Protection */
 _FICD(ICS_PGD);                             /* Enable Primary ICP pins */
-_FWDT(FWDTEN_ON);                           /* Enable Watch Dog */
+//_FWDT(WDTPOST_PS2048 & WDTPRE_PR32 & FWDTEN_ON & WINDIS_OFF);                           /* Enable Watch Dog */
 _FPOR(PWRT_128);
+_FBS(BWRP_OFF & NO_BOOT_CODE);
 
-
+_FGS(CODE_PROT_OFF);                        /* Disable Code Protection */
+_FWDT(FWDTEN_ON);                           /* Enable Watch Dog */
+_FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
 
 
 /* 
@@ -65,9 +68,6 @@ void DoStateMachine(void);
 
 void InitPeripherals(void);
 
-void DoSerialCommand(void);
-void DoSerialCommand(void) {
-}
 
 unsigned int FaultCheck(void);
 unsigned int FaultCheck(void) {
@@ -96,7 +96,6 @@ int main (void) {
 
 
 void DoStateMachine(void) {
-  unsigned int local_target_position;
 
   switch (control_state) {
     
@@ -192,15 +191,7 @@ void DoStateMachine(void) {
   case STATE_SOFTWARE_CONTROL:
     while (control_state == STATE_SOFTWARE_CONTROL) {
       DoSerialCommand();
-      local_target_position = software_target_position;
-      if (local_target_position >= afc_motor.max_position) {
-	local_target_position = afc_motor.max_position;
-      }
-      if (local_target_position <= afc_motor.min_position) {
-	local_target_position = afc_motor.min_position;
-      }
-      afc_motor.target_position = local_target_position;
-      
+      //SetMotorTarget(&afc_motor, software_target_position);
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
@@ -212,6 +203,7 @@ void DoStateMachine(void) {
   case STATE_AFC_START_UP:
     while (control_state == STATE_AFC_START_UP) {
       DoSerialCommand();
+      //SetMotorTarget(&afc_motor, home_position);
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (PIN_MODE_SELECT != ILL_AFC_MODE) {
@@ -287,12 +279,64 @@ void InitPeripherals(void){
   IPC4bits.INT2IP = 6;		/* Set interrupt to second highest priority */
 	
   // DPARKER what are these for
+  /*
   IEC1bits.PSEMIE = 1;
   IFS1bits.PSEMIF = 0;
   IPC4bits.PSEMIP = 5;
   IPC1bits.T2IP = 4;
   IPC1bits.T3IP = 2;
+  */
 
+  // Configure UART Interrupts
+  _U1RXIE = 0; // Disable RX Interrupt
+  _U1RXIP = 3; // Priority Level 3
+  
+  _U1TXIE = 0; // Disable TX Interrupt
+  _U1RXIP = 3; // Priority Level 3
+
+
+
+
+  /* 
+     --- UART 1 setup ---
+     See uart.h and Microchip documentation for more information about the condfiguration
+     
+  */
+#define UART1_BAUDRATE             9600        // U1 Baud Rate
+#define A35997_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_RX_TX & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_UXRX_IDLE_ONE & UART_BRGH_SIXTEEN & UART_NO_PAR_8BIT & UART_1STOPBIT)
+  //#define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
+#define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
+#define A35997_U1BRG_VALUE         (((FCY/UART1_BAUDRATE)/16)-1)
+  
+
+  
+  // Initialize the UART
+  
+  // ----------------- UART #1 Setup and Data Buffer -------------------------//
+  // Setup the UART input and output buffers
+  BufferByte64Initialize(&uart1_input_buffer);
+  BufferByte64Initialize(&uart1_output_buffer);
+  
+  //U1MODE = A35997_U1MODE_VALUE;
+  // U1STA = A35997_U1STA_VALUE;  
+  //U1BRG = A35997_U1BRG_VALUE;  
+  U1MODE = 0b0000000000000000;
+  U1STA =  0b0100010000000000;
+  U1BRG = 14;
+
+  
+
+
+
+
+  // Begin UART operation
+  command_string.data_state = COMMAND_BUFFER_EMPTY;  // The command buffer is empty
+
+  _U1TXIF = 0;	// Clear the Transmit Interrupt Flag
+  _U1RXIF = 0;	// Clear the Recieve Interrupt Flag
+  _U1TXIE = 1;	// Enable Transmit Interrupts
+  _U1RXIE = 1;	// Enable Recieve Interrupts  
+  U1MODEbits.UARTEN = 1;	// And turn the peripheral on
 }    
 
 
@@ -461,6 +505,10 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
 }
 
 
+void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
+  _INT0IF = 0;  
+}
+
 
 /******************************************************************************
 * Interrupt:     _INT2Interrupt()
@@ -484,3 +532,10 @@ void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
   // DPARKER need to save that there was a fault somehow so that we can move to fault state
 }
 
+
+// DPARKER THIS FUNCTION FOR DEBUGGING ONLY
+void  __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
+  Nop();
+  Nop();
+  __asm__ ("Reset");
+}

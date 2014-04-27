@@ -95,4 +95,7 @@ typedef struct {
 
 
 
+extern unsigned int software_target_position;
+extern unsigned int control_state;
+
 #endif
