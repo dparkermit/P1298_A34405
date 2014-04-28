@@ -29,6 +29,8 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
 */
 
 
+void InitPWM(void);
+
 
 #define MOTOR_DECREASE_CURRENT_PWM_CYCLES    4000 // .1 second
 
@@ -41,12 +43,12 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
 
 
 
-#define MOTOR_FREQUENCY_DIVISOR   1
-
+//#define MOTOR_FREQUENCY_DIVISOR   1
+//unsigned int frequency_divisor_counter;
 
 
 unsigned int motor_motion;
-unsigned int frequency_divisor_counter;
+
 unsigned int counterTablePWM;
 unsigned int counterPWM;
 unsigned long motor_stopped_counter; 
@@ -102,12 +104,13 @@ void DoStateMachine(void) {
 
   case STATE_STARTUP:
     InitPeripherals();
+    InitPWM();
     control_state = STATE_MOTOR_ZERO;
     break;
 
   case STATE_MOTOR_ZERO:
-    afc_motor.current_position = afc_motor.max_position;
-    afc_motor.target_position = afc_motor.min_position;
+    afc_motor.current_position = 600;
+    afc_motor.target_position = 100;
     while (control_state == STATE_MOTOR_ZERO) {
       DoSerialCommand();
       if (FaultCheck()) {
@@ -119,8 +122,6 @@ void DoStateMachine(void) {
     break;
 
   case STATE_MOTOR_STARTUP_HOME:
-    afc_motor.current_position = 0;
-    afc_motor.target_position = home_position;
     while (control_state == STATE_MOTOR_STARTUP_HOME) {
       DoSerialCommand();
       if (FaultCheck()) {
@@ -242,6 +243,11 @@ void DoStateMachine(void) {
 
 void InitPeripherals(void){
 
+  afc_motor.max_position = 1200;
+  afc_motor.min_position = 20;
+  afc_motor.target_position = 100;
+  afc_motor.current_position = 100;
+
   PIN_SAMPLE_TRIGGER = !OLL_TRIGGER_SH;
   PIN_BRIDGE_POWER_RELAY = !OLL_BRIDGE_POWER_RELAY_CLOSED;
   
@@ -263,29 +269,32 @@ void InitPeripherals(void){
 
 
   // Set up Interrupts
-  /* Set up external INT0 */
+  // Set up external INT0 */
   // This is the trigger interrupt
-  IEC0bits.INT0IE = 0;		/* Disable INT0 Interrupt */
-  IFS0bits.INT0IF = 0;		/* Clear Interrupt flag */
-  INTCON2bits.INT0EP = 1; 	/* Interrupt on falling edge */ 
-  IPC0bits.INT0IP = 7;		/* Set interrupt to highest priority */
+  _INT0IF = 0;		// Clear Interrupt flag
+  _INT0IE = 0;		// Disable INT0 Interrupt
+  _INT0EP = 1; 	        // Interrupt on falling edge
+  _INT0IP = 7;		// Set interrupt to highest priority
   // triggerINT = 0;  // DPARKER, I have no clue WTF this was
 	
   /* Set up external INT2 */
   // This is the overcurrent interrupt
-  IEC1bits.INT2IE = 1;		/* Enable INT2 Interrupt */
-  IFS1bits.INT2IF = 0;		/* Clear Interrupt flag */
-  INTCON2bits.INT2EP = 1; 	/* Interrupt on falling edge */ 
-  IPC4bits.INT2IP = 6;		/* Set interrupt to second highest priority */
+  _INT2IF = 0;		// Clear Interrupt flag
+  _INT2IE = 1;		// Enable INT2 Interrupt
+  _INT2EP = 1; 	        // Interrupt on falling edge
+  _INT2IP = 6;		// Set interrupt to second highest priority
 	
   // DPARKER what are these for
   /*
-  IEC1bits.PSEMIE = 1;
-  IFS1bits.PSEMIF = 0;
-  IPC4bits.PSEMIP = 5;
-  IPC1bits.T2IP = 4;
-  IPC1bits.T3IP = 2;
+  _T2IP = 4;
+  _T3IP = 2;
   */
+  
+  // PWM Special event trigger
+  _PSEMIF = 0;
+  _PSEMIE = 1;
+  _PSEMIP = 5;
+
 
   // Configure UART Interrupts
   _U1RXIE = 0; // Disable RX Interrupt
@@ -317,14 +326,14 @@ void InitPeripherals(void){
   BufferByte64Initialize(&uart1_input_buffer);
   BufferByte64Initialize(&uart1_output_buffer);
   
+
+
   //U1MODE = A35997_U1MODE_VALUE;
   // U1STA = A35997_U1STA_VALUE;  
   //U1BRG = A35997_U1BRG_VALUE;  
   U1MODE = 0b0000000000000000;
-  U1STA =  0b0100010000000000;
-  U1BRG = 14;
-
-  
+  U1STA = 0b0000010000000000; 
+  U1BRG = 188;
 
 
 
@@ -337,6 +346,7 @@ void InitPeripherals(void){
   _U1TXIE = 1;	// Enable Transmit Interrupts
   _U1RXIE = 1;	// Enable Recieve Interrupts  
   U1MODEbits.UARTEN = 1;	// And turn the peripheral on
+  U1STA = 0b0000010000000000;   // The U1STA register must be set AFTER the module is enabled for some reason
 }    
 
 
@@ -354,7 +364,7 @@ void InitPeripherals(void){
 */
 
 
-#define PWM_PWMCON_VALUE        0b0000000000000001
+#define PWM_PWMCON_VALUE        0b0000000000000000
 
 /* 
    Clear Fault Interrupt flag 
@@ -366,10 +376,10 @@ void InitPeripherals(void){
    Time base is read from PTMR 
    Duty cycle is read from PDC 
    No extenal reset for PTMR
-   Immediate update to PDC  --> DPARKER - I need jason to explain to me why this is set and not synced to PWM TIME BASE
+   PWM updates synchronized to PWM time base
 */
 
-#define PWM_IOCON_OVERRIDE_OFF_VALUE  0b0000001100000001
+#define PWM_IOCON_OVERRIDE_OFF_VALUE  0b0000001100000000
 /* 
    Clear Fault Interrupt flag 
    Clear Current Limit Interrupt flag 
@@ -380,13 +390,13 @@ void InitPeripherals(void){
    Time base is read from PTMR 
    Duty cycle is read from PDC 
    No extenal reset for PTMR
-   Immediate update to PDC  --> DPARKER - I need jason to explain to me why this is set and not synced to PWM TIME BASE
+   PWM updates synchronized to PWM time base
 */
 
 
 
  
-void initPWM(void) {
+void InitPWM(void) {
   
   PTPER = PTPER_VALUE;                      /* PTPER = FCY*32(PLL)/(Desired PWM Freq.) Refer to PWM section for more details   */
 
@@ -420,8 +430,8 @@ void initPWM(void) {
 
 
   /* Initialize PWM Generator 4 */
-  IOCON3   = PWM_IOCON_VALUE;
-  PWMCON3  = PWM_PWMCON_VALUE;
+  IOCON4   = PWM_IOCON_VALUE;
+  PWMCON4  = PWM_PWMCON_VALUE;
 
   DTR4     = DEADTIME;
   ALTDTR4  = DEADTIME;
@@ -450,7 +460,10 @@ void initPWM(void) {
 * Note:			None
 *******************************************************************************/
 void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
+  unsigned int counterTablePWM_2;
+
   IFS1bits.PSEMIF = 0;
+
   
   if (motor_motion == MOTOR_STOPPED) {
     if (afc_motor.target_position > afc_motor.max_position) {
@@ -461,10 +474,8 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
     }
     if (afc_motor.current_position > afc_motor.target_position) {
       motor_motion = MOVING_COUNTER_CLOCKWISE;
-      frequency_divisor_counter = 0;
     } else if (afc_motor.current_position < afc_motor.target_position) {
       motor_motion = MOVING_CLOCKWISE;
-      frequency_divisor_counter = 0;
     } else if (motor_stopped_counter >= MOTOR_DECREASE_CURRENT_PWM_CYCLES) {
       motor_stopped_counter = 0;
       // DPARKER set PWM duty cycle so that current draw will be reduced.
@@ -472,30 +483,30 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
     }
   } else {
     motor_stopped_counter = 0;
-    frequency_divisor_counter++;
-    if (frequency_divisor_counter == MOTOR_FREQUENCY_DIVISOR) {
-      frequency_divisor_counter = 0;
-      if (motor_motion == MOVING_CLOCKWISE) {
-	counterTablePWM--;
-      } else {
-	counterTablePWM++;
-      }
+    if (motor_motion == MOVING_CLOCKWISE) {
+      counterTablePWM--;
+    } else {
+      counterTablePWM++;
     }
+  
     counterTablePWM %= (TABLE_SIZE);
+    counterTablePWM_2 = counterTablePWM +32;
+    counterTablePWM_2 %= (TABLE_SIZE);
+
     PDC1 = winding1ATable[counterTablePWM];
     PDC2 = winding1BTable[counterTablePWM];
-    PDC3 = winding1ATable[(counterTablePWM + 32)];
-    PDC4 = winding1BTable[(counterTablePWM + 32)];
+    PDC3 = winding1ATable[counterTablePWM_2];
+    PDC4 = winding1BTable[counterTablePWM_2];
 
     counterPWM++;
     if (counterPWM >= FULL_STEP) {
       counterPWM = 0;
       if (motor_motion == MOVING_CLOCKWISE) {
-	if (afc_motor.current_position <= 0xFFFF) {
+	if (afc_motor.current_position < 0xFFFF) {
 	  afc_motor.current_position++;
 	}
       } else {
-	if (afc_motor.current_position >= 1) {
+	if (afc_motor.current_position > 0) {
 	  afc_motor.current_position--;
 	}
       }
@@ -523,12 +534,12 @@ void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
   // Shutdown the PWM and save the fault
   // Active the override regisiters (set to zero in the configuration)
   _INT2IF = 0;
-  
+  /*  
   IOCON1 = PWM_IOCON_OVERRIDE_OFF_VALUE;
   IOCON2 = PWM_IOCON_OVERRIDE_OFF_VALUE;
   IOCON3 = PWM_IOCON_OVERRIDE_OFF_VALUE;
   IOCON4 = PWM_IOCON_OVERRIDE_OFF_VALUE;
-
+  */
   // DPARKER need to save that there was a fault somehow so that we can move to fault state
 }
 

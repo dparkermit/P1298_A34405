@@ -97,5 +97,6 @@ typedef struct {
 
 extern unsigned int software_target_position;
 extern unsigned int control_state;
+extern STEPPER_MOTOR afc_motor;
 
 #endif

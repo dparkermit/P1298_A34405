@@ -167,6 +167,7 @@ unsigned int ReadFromRam(unsigned int ram_location) {
 
     case RAM_READ_STATE:
       data_return = control_state;
+      afc_motor.target_position = afc_motor.target_position + 1;
       break;
 
     case RAM_READ_VERSION:
