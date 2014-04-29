@@ -139,8 +139,23 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_SET_TARGET_POSITION:
-      software_target_position = data_word;
+      // DPARKER only activate these commands if we are in software control mode
+      // For the moment they are always active
+      SetMotorTarget(ABSOLUTE_POSITION, data_word); 
       break;
+
+    case CMD_MOVE_CLOCKWISE:
+      // DPARKER only activate these commands if we are in software control mode
+      // For the moment they are always active
+      SetMotorTarget(RELATIVE_CLOCKWISE, data_word);
+      break;
+
+    case CMD_MOVE_COUNTER_CLOCKWISE:
+      // DPARKER only activate these commands if we are in software control mode
+      // For the moment they are always active
+      SetMotorTarget(RELATIVE_COUNTER_CLOCKWISE, data_word);
+      break;
+
 
     case CMD_READ_EEPROM_REGISTER:
       
@@ -167,13 +182,19 @@ unsigned int ReadFromRam(unsigned int ram_location) {
 
     case RAM_READ_STATE:
       data_return = control_state;
-      afc_motor.target_position = afc_motor.target_position + 1;
       break;
 
     case RAM_READ_VERSION:
       data_return = A34405_SOFTWARE_VERSION;
       break;
 
+    case RAM_READ_CURRENT_POSITION:
+      data_return = afc_motor.current_position;
+      break;
+      
+    case RAM_READ_TARGET_POSITION:
+      data_return = afc_motor.target_position;
+      break;
     }  
   return data_return;
 }

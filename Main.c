@@ -23,11 +23,13 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
    INT0 - Trigger Input
    INT2 - Motor Overcurrent
 
-   TMR3(Dan) - Use to time the motor position
-
+   TMR2(Dan) - Used to time the motor position
 
 */
 
+
+const unsigned int PWMHighPowerTable[128] = {FULL_POWER_TABLE_VALUES};
+const unsigned int PWMLowPowerTable[128] = {LOW_POWER_TABLE_VALUES};
 
 void InitPWM(void);
 
@@ -40,6 +42,9 @@ void InitPWM(void);
 #define MOVING_COUNTER_CLOCKWISE  0
 #define MOVING_CLOCKWISE          1
 #define MOTOR_STOPPED             2
+
+
+
 
 
 
@@ -103,16 +108,18 @@ void DoStateMachine(void) {
     
 
   case STATE_STARTUP:
+    ClrWdt();
     InitPeripherals();
     InitPWM();
     control_state = STATE_MOTOR_ZERO;
     break;
 
   case STATE_MOTOR_ZERO:
-    afc_motor.current_position = 600;
+    afc_motor.current_position = 300;
     afc_motor.target_position = 100;
     while (control_state == STATE_MOTOR_ZERO) {
       DoSerialCommand();
+      ClrWdt();
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (afc_motor.current_position == 10) {
@@ -123,6 +130,7 @@ void DoStateMachine(void) {
 
   case STATE_MOTOR_STARTUP_HOME:
     while (control_state == STATE_MOTOR_STARTUP_HOME) {
+      ClrWdt();  
       DoSerialCommand();
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -133,6 +141,7 @@ void DoStateMachine(void) {
     break;
     
   case STATE_RESET:
+    ClrWdt();
     ResetAllFaults();
     DoSerialCommand();
     if (FaultCheck()) {
@@ -159,7 +168,7 @@ void DoStateMachine(void) {
     
     while (control_state == STATE_MANUAL_MODE) {
       DoSerialCommand();
-
+      ClrWdt();
       if (manual_control_ccw_pulse_input_ready && (PIN_STEP_COUNTER_CLOCKWISE == ILL_STEP_PIN_ACTIVE)) {
 	manual_control_ccw_pulse_input_ready = 0;
 	if (afc_motor.target_position <= (afc_motor.min_position + 1)) {
@@ -192,7 +201,7 @@ void DoStateMachine(void) {
   case STATE_SOFTWARE_CONTROL:
     while (control_state == STATE_SOFTWARE_CONTROL) {
       DoSerialCommand();
-      //SetMotorTarget(&afc_motor, software_target_position);
+      ClrWdt();
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
@@ -204,6 +213,7 @@ void DoStateMachine(void) {
   case STATE_AFC_START_UP:
     while (control_state == STATE_AFC_START_UP) {
       DoSerialCommand();
+      ClrWdt();
       //SetMotorTarget(&afc_motor, home_position);
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -224,6 +234,7 @@ void DoStateMachine(void) {
 
   case STATE_FAULT:
     while (control_state == STATE_FAULT) {
+      ClrWdt();
       DoSerialCommand();
     }
     break;
@@ -314,7 +325,7 @@ void InitPeripherals(void){
   // Configure T2
   /* With 29 MHz Clock and 256 pre-scale the minimum pulses per second is 2*/
 
-#define STEPS_PER_SECOND           200
+#define STEPS_PER_SECOND           100
 #define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
 #define T2_CONFIG_VALUE           0b1000000000110000   // Timer On and 256 Prescale
 
@@ -327,11 +338,11 @@ void InitPeripherals(void){
      See uart.h and Microchip documentation for more information about the condfiguration
      
   */
-#define UART1_BAUDRATE             124000        // U1 Baud Rate
+#define UART1_BAUDRATE             120000        // U1 Baud Rate
 #define A35997_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_RX_TX & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_UXRX_IDLE_ONE & UART_BRGH_SIXTEEN & UART_NO_PAR_8BIT & UART_1STOPBIT)
   //#define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
 #define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
-#define A35997_U1BRG_VALUE         (((FCY/UART1_BAUDRATE)/16)-1)
+#define A35997_U1BRG_VALUE         (unsigned int)(((FCY/UART1_BAUDRATE)/16)-1)
   
 
   
@@ -346,7 +357,7 @@ void InitPeripherals(void){
 
   //U1MODE = A35997_U1MODE_VALUE;
   // U1STA = A35997_U1STA_VALUE;  
-  U1BRG = A35997_U1BRG_VALUE;  
+  U1BRG = A35997_U1BRG_VALUE;
   U1MODE = 0b0000000000000000;
   U1STA = 0b0000010000000000; 
   //U1BRG = 188;
@@ -458,7 +469,8 @@ void InitPWM(void) {
 
 
 
-
+#define MOTOR_SLOWDOWN_FACTOR 6
+unsigned int motor_slowdown;
 
 /******************************************************************************
 * Interrupt:     _PWMSpEventMatchInterrupt()
@@ -470,42 +482,67 @@ void InitPWM(void) {
 * Note:			None
 *******************************************************************************/
 void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
-  unsigned int counterTablePWM_2;
+  unsigned int counterTablePWM_32;
+  unsigned int counterTablePWM_64;
+  unsigned int counterTablePWM_96;
   _PSEMIF = 0;  
 
   if (motor_motion != MOTOR_STOPPED) {
-    if (motor_motion == MOVING_CLOCKWISE) {
-      counterTablePWM--;
-    } else {
-      counterTablePWM++;
-    }
-  
-
-    // DPARKER Use bitwise mask here to seriously save on computation
-    counterTablePWM %= (TABLE_SIZE);
-    counterTablePWM_2 = counterTablePWM +32;
-    counterTablePWM_2 %= (TABLE_SIZE);
-
-
-    // DPARKER Winding tables 1A and 1B are the same table, just with different phase.  We should only need one table
-    PDC1 = winding1ATable[counterTablePWM];
-    PDC2 = winding1BTable[counterTablePWM];
-    PDC3 = winding1ATable[counterTablePWM_2];
-    PDC4 = winding1BTable[counterTablePWM_2];
-
-    counterPWM++;
-    if (counterPWM >= FULL_STEP) {
-      counterPWM = 0;
+    motor_stopped_counter = 0;
+    motor_slowdown++;
+    if (motor_slowdown >= MOTOR_SLOWDOWN_FACTOR) {
+      motor_slowdown = 0;
       if (motor_motion == MOVING_CLOCKWISE) {
-	if (afc_motor.current_position < 0xFFFF) {
-	  afc_motor.current_position++;
+	  counterTablePWM--;
+	} else {
+	  counterTablePWM++;
 	}
-      } else {
-	if (afc_motor.current_position > 0) {
-	  afc_motor.current_position--;
+      counterTablePWM &= 0x007F;
+      counterTablePWM_32 = counterTablePWM + 32;
+      counterTablePWM_32 &= 0x007F;
+      counterTablePWM_64 = counterTablePWM + 64;
+      counterTablePWM_64 &= 0x007F;
+      counterTablePWM_96 = counterTablePWM + 96;
+      counterTablePWM_96 &= 0x007F;
+
+      
+      PDC1 = PWMHighPowerTable[counterTablePWM];
+      PDC2 = PWMHighPowerTable[counterTablePWM_64];
+      PDC3 = PWMHighPowerTable[counterTablePWM_32];
+      PDC4 = PWMHighPowerTable[counterTablePWM_96];
+      
+      counterPWM++;
+      if (counterPWM >= FULL_STEP) {
+	counterPWM = 0;
+	if (motor_motion == MOVING_CLOCKWISE) {
+	  if (afc_motor.current_position < 0xFFFF) {
+	    afc_motor.current_position++;
+	  }
+	} else {
+	  if (afc_motor.current_position > 0) {
+	    afc_motor.current_position--;
+	  }
 	}
+	motor_motion = MOTOR_STOPPED;
       }
-      motor_motion = MOTOR_STOPPED;
+    }
+  } else {
+    motor_stopped_counter++;
+    if (motor_stopped_counter >= MOTOR_DECREASE_CURRENT_PWM_CYCLES) {
+      motor_stopped_counter = MOTOR_DECREASE_CURRENT_PWM_CYCLES;
+      counterTablePWM &= 0x007F;
+      counterTablePWM_32 = counterTablePWM + 32;
+      counterTablePWM_32 &= 0x007F;
+      counterTablePWM_64 = counterTablePWM + 64;
+      counterTablePWM_64 &= 0x007F;
+      counterTablePWM_96 = counterTablePWM + 96;
+      counterTablePWM_96 &= 0x007F;
+
+      PDC1 = PWMLowPowerTable[counterTablePWM];
+      PDC2 = PWMLowPowerTable[counterTablePWM_64];
+      PDC3 = PWMLowPowerTable[counterTablePWM_32];
+      PDC4 = PWMLowPowerTable[counterTablePWM_96];
+      
     }
   }
 }
@@ -570,9 +607,39 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
       motor_motion = MOVING_COUNTER_CLOCKWISE;
     } else if (afc_motor.current_position < afc_motor.target_position) {
       motor_motion = MOVING_CLOCKWISE;
-    } else {
-      motor_stopped_counter++;
-    }
+    } 
   }
 }
 
+
+void SetMotorTarget(unsigned int position_type, unsigned int value) {
+  unsigned int current_target;
+  unsigned int new_target;
+  
+  current_target = afc_motor.target_position;
+  
+  if (position_type == ABSOLUTE_POSITION) {
+    new_target = value;
+  } else if (position_type == RELATIVE_CLOCKWISE) {
+    if ((0xFFFF-value) > current_target) {
+      new_target = current_target + value;
+    } else {
+      new_target = 0xFFFF;
+    }
+  } else if (position_type == RELATIVE_COUNTER_CLOCKWISE) {
+    if (current_target >= value) {
+      new_target = current_target - value;
+    } else {
+      new_target = 0;
+    }    
+  }
+  if (new_target >= afc_motor.max_position) {
+    new_target = afc_motor.max_position;
+  } 
+  if (new_target <= afc_motor.min_position) {
+    new_target = afc_motor.min_position;
+  }
+  
+  afc_motor.target_position = new_target;
+
+}

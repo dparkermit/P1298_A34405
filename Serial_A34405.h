@@ -6,6 +6,8 @@
 // Command List
 #define CMD_READ_RAM_VALUE                              0x20
 #define CMD_SET_TARGET_POSITION                         0x30
+#define CMD_MOVE_CLOCKWISE                              0x32
+#define CMD_MOVE_COUNTER_CLOCKWISE                      0x34
 #define CMD_READ_EEPROM_REGISTER                        0x40
 #define CMD_WRITE_EEPROM_REGISTER                       0x42
 
@@ -18,7 +20,8 @@
 #define RAM_READ_STATE                                  0x01
 #define RAM_READ_VERSION                                0x02
 
-
+#define RAM_READ_CURRENT_POSITION                       0x10
+#define RAM_READ_TARGET_POSITION                        0x20
 
 
 

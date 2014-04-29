@@ -18,9 +18,9 @@
 /******************* MOTOR_PARAMETERS *******************************/
 
 //#define DEADTIME                (unsigned int)(0.000005*FCY)
-// DPARKER The deadtime is a function of 4x FCY so it should be multiplied by 4
+// DPARKER The deadtime is a function of 32x FCY so it should be multiplied by 32
 
-#define DEADTIME                (unsigned int)(0.000005*FCY*4)
+#define DEADTIME                (unsigned int)(0.000001*FCY*32)
 #define PTPER_VALUE             (unsigned int)(FCY*32/MOTOR_PWM_FCY)
 #define FULL_DC                 PTPER_VALUE
 #define HALF_DC                 (unsigned int)(PTPER_VALUE/2)
@@ -98,5 +98,13 @@ typedef struct {
 extern unsigned int software_target_position;
 extern unsigned int control_state;
 extern STEPPER_MOTOR afc_motor;
+
+void SetMotorTarget(unsigned int position_type, unsigned int value); 
+
+#define RELATIVE_COUNTER_CLOCKWISE 0
+#define RELATIVE_CLOCKWISE         1
+#define ABSOLUTE_POSITION          2
+
+
 
 #endif
