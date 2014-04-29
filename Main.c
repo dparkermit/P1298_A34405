@@ -289,6 +289,12 @@ void InitPeripherals(void){
   _T2IP = 4;
   _T3IP = 2;
   */
+
+  // Configure T2 Interrupt.  This is used to time motor steps
+  _T2IF = 0;
+  _T2IE = 1;
+  _T2IP = 4;
+
   
   // PWM Special event trigger
   _PSEMIF = 0;
@@ -305,13 +311,23 @@ void InitPeripherals(void){
 
 
 
+  // Configure T2
+  /* With 29 MHz Clock and 256 pre-scale the minimum pulses per second is 2*/
 
+#define STEPS_PER_SECOND           200
+#define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
+#define T2_CONFIG_VALUE           0b1000000000110000   // Timer On and 256 Prescale
+
+
+  T2CON = T2_CONFIG_VALUE;
+  PR2 = T2_PERIOD_VALUE;
+  
   /* 
      --- UART 1 setup ---
      See uart.h and Microchip documentation for more information about the condfiguration
      
   */
-#define UART1_BAUDRATE             9600        // U1 Baud Rate
+#define UART1_BAUDRATE             124000        // U1 Baud Rate
 #define A35997_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_RX_TX & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_UXRX_IDLE_ONE & UART_BRGH_SIXTEEN & UART_NO_PAR_8BIT & UART_1STOPBIT)
   //#define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
 #define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
@@ -330,10 +346,10 @@ void InitPeripherals(void){
 
   //U1MODE = A35997_U1MODE_VALUE;
   // U1STA = A35997_U1STA_VALUE;  
-  //U1BRG = A35997_U1BRG_VALUE;  
+  U1BRG = A35997_U1BRG_VALUE;  
   U1MODE = 0b0000000000000000;
   U1STA = 0b0000010000000000; 
-  U1BRG = 188;
+  //U1BRG = 188;
 
 
 
@@ -350,18 +366,6 @@ void InitPeripherals(void){
 }    
 
 
-#define PWM_IOCON_VALUE         0b1100000000000000
-/* 
-   PWM Module controls High output
-   PWM Module controls Low output 
-   Output Polarity is active High 
-   Low Output Polarity is active High 
-   Comp. output mode 
-   PWM Generator Provides data for High output 
-   PWM Generator Provides data for Low output 
-   If overide is enabled the outputs will be low 
-   Overide occurs on the next clock cycle, not the next PWM cycle 
-*/
 
 
 #define PWM_PWMCON_VALUE        0b0000000000000000
@@ -379,18 +383,24 @@ void InitPeripherals(void){
    PWM updates synchronized to PWM time base
 */
 
-#define PWM_IOCON_OVERRIDE_OFF_VALUE  0b0000001100000000
+#define PWM_IOCON_VALUE         0b1100000000000000
 /* 
-   Clear Fault Interrupt flag 
-   Clear Current Limit Interrupt flag 
-   Clear PWM Trigger Interrupt flag 
-   Disable Fault Interrupt 
-   Disable Current Limit Interrupt 
-   Disable Trigger Interrupt 
-   Time base is read from PTMR 
-   Duty cycle is read from PDC 
-   No extenal reset for PTMR
-   PWM updates synchronized to PWM time base
+   PWM Module controls High output
+   PWM Module controls Low output 
+   Output Polarity is active High 
+   Low Output Polarity is active High 
+   Comp. output mode 
+   PWM Generator Provides data for High output 
+   PWM Generator Provides data for Low output 
+   If overide is enabled the outputs will be low 
+   Overide occurs on the next clock cycle, not the next PWM cycle 
+*/
+
+
+#define PWM_IOCON_VALUE_OVERRIDE  0b0000001100000000
+/* 
+   This value is loaded to shutdown the PWM pair by setting both gate drive outputs to zero.
+
 */
 
 
@@ -461,38 +471,23 @@ void InitPWM(void) {
 *******************************************************************************/
 void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
   unsigned int counterTablePWM_2;
+  _PSEMIF = 0;  
 
-  IFS1bits.PSEMIF = 0;
-
-  
-  if (motor_motion == MOTOR_STOPPED) {
-    if (afc_motor.target_position > afc_motor.max_position) {
-      afc_motor.target_position = afc_motor.max_position;
-    }
-    if (afc_motor.target_position < afc_motor.min_position) {
-      afc_motor.target_position = afc_motor.min_position;
-    }
-    if (afc_motor.current_position > afc_motor.target_position) {
-      motor_motion = MOVING_COUNTER_CLOCKWISE;
-    } else if (afc_motor.current_position < afc_motor.target_position) {
-      motor_motion = MOVING_CLOCKWISE;
-    } else if (motor_stopped_counter >= MOTOR_DECREASE_CURRENT_PWM_CYCLES) {
-      motor_stopped_counter = 0;
-      // DPARKER set PWM duty cycle so that current draw will be reduced.
-      // Obviously at a loss of holding torque
-    }
-  } else {
-    motor_stopped_counter = 0;
+  if (motor_motion != MOTOR_STOPPED) {
     if (motor_motion == MOVING_CLOCKWISE) {
       counterTablePWM--;
     } else {
       counterTablePWM++;
     }
   
+
+    // DPARKER Use bitwise mask here to seriously save on computation
     counterTablePWM %= (TABLE_SIZE);
     counterTablePWM_2 = counterTablePWM +32;
     counterTablePWM_2 %= (TABLE_SIZE);
 
+
+    // DPARKER Winding tables 1A and 1B are the same table, just with different phase.  We should only need one table
     PDC1 = winding1ATable[counterTablePWM];
     PDC2 = winding1BTable[counterTablePWM];
     PDC3 = winding1ATable[counterTablePWM_2];
@@ -534,12 +529,12 @@ void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
   // Shutdown the PWM and save the fault
   // Active the override regisiters (set to zero in the configuration)
   _INT2IF = 0;
-  /*  
-  IOCON1 = PWM_IOCON_OVERRIDE_OFF_VALUE;
-  IOCON2 = PWM_IOCON_OVERRIDE_OFF_VALUE;
-  IOCON3 = PWM_IOCON_OVERRIDE_OFF_VALUE;
-  IOCON4 = PWM_IOCON_OVERRIDE_OFF_VALUE;
-  */
+  
+  IOCON1 = PWM_IOCON_VALUE_OVERRIDE;
+  IOCON2 = PWM_IOCON_VALUE_OVERRIDE;
+  IOCON3 = PWM_IOCON_VALUE_OVERRIDE;
+  IOCON4 = PWM_IOCON_VALUE_OVERRIDE;
+ 
   // DPARKER need to save that there was a fault somehow so that we can move to fault state
 }
 
@@ -550,3 +545,34 @@ void  __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
   Nop();
   __asm__ ("Reset");
 }
+
+
+
+/******************************************************************************
+* Interrupt:     _T2Interrupt
+*
+* Output:		None
+*
+* Overview:		T2 Interrupt
+*
+* Note:			None
+*******************************************************************************/
+void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
+  _T2IF = 0;
+  if (motor_motion == MOTOR_STOPPED) {
+    if (afc_motor.target_position > afc_motor.max_position) {
+      afc_motor.target_position = afc_motor.max_position;
+    }
+    if (afc_motor.target_position < afc_motor.min_position) {
+      afc_motor.target_position = afc_motor.min_position;
+    }
+    if (afc_motor.current_position > afc_motor.target_position) {
+      motor_motion = MOVING_COUNTER_CLOCKWISE;
+    } else if (afc_motor.current_position < afc_motor.target_position) {
+      motor_motion = MOVING_CLOCKWISE;
+    } else {
+      motor_stopped_counter++;
+    }
+  }
+}
+
