@@ -2,10 +2,7 @@
 #define __MAIN_H
 
 /********************** dsPIC parameters *******************************/
-
 #define FCY                         29100000    /* FRC = 14.55MHz , PLL= X32 , FCY = 14.55e6*32/8/2 = 29.1e6 */
-#define MOTOR_PWM_FCY               40000       /* desired PWM frequency 40kHz */
-
 
 
 #define I2C_CLK                     100000      /* I2C running at 100KHz */
@@ -20,19 +17,9 @@
 //#define DEADTIME                (unsigned int)(0.000005*FCY)
 // DPARKER The deadtime is a function of 32x FCY so it should be multiplied by 32
 
-#define DEADTIME                (unsigned int)(0.000001*FCY*32)
-#define PTPER_VALUE             (unsigned int)(FCY*32/MOTOR_PWM_FCY)
-#define FULL_DC                 PTPER_VALUE
-#define HALF_DC                 (unsigned int)(PTPER_VALUE/2)
-#define ZERO_DC                 0
-
-//motor and winding direction - do not change - these values are used in different mathematical formulae
-#define COUNTER_CLOCKWISE         0               //winding forward direction; used by setDir variables
-#define CLOCKWISE                 1               //winding reverse direction; used by setDir variables
-#define STOP                      2
 
 
-// STATE DEFENITIONS
+// STATE DEFINITIONS
 
 #define STATE_STARTUP            0x10
 #define STATE_MOTOR_ZERO         0x20
@@ -44,22 +31,6 @@
 #define STATE_MANUAL_MODE        0x50
 #define STATE_SOFTWARE_CONTROL   0x60
 #define STATE_FAULT              0xF0
-
-
-
-typedef struct {
-  unsigned int current_position;
-  unsigned int target_position;
-  unsigned int home_position;
-  unsigned int max_position;
-  unsigned int min_position;
-  unsigned int speed_rpm;
-  unsigned int high_low_torque_select;
-  
-  
-} STEPPER_MOTOR;
-
-
 
 
 
@@ -86,24 +57,16 @@ typedef struct {
 #define PIN_SAMPLE_TRIGGER            _LATB10
 #define OLL_TRIGGER_SH                1
 
-#define PIN
-
 #define PIN_FAULT_OUT_1               _LATF15
 #define PIN_FAULT_OUT_2               _LATA10
 #define PIN_FAULT_OUT_3               _LATA11
 #define PIN_SPARE_OUT                 _LATF14
 
 
-
-extern unsigned int software_target_position;
 extern unsigned int control_state;
-extern STEPPER_MOTOR afc_motor;
 
-void SetMotorTarget(unsigned int position_type, unsigned int value); 
 
-#define RELATIVE_COUNTER_CLOCKWISE 0
-#define RELATIVE_CLOCKWISE         1
-#define ABSOLUTE_POSITION          2
+
 
 
 

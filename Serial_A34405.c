@@ -1,6 +1,7 @@
 #include <p30fxxxx.h>
-#include "serial_A34405.h"
+#include "Serial_A34405.h"
 #include "Main.h"
+#include "Stepper.h"
 #include "Version_A34405.h"
 
 /*
@@ -141,19 +142,19 @@ void ExecuteCommand(void) {
     case CMD_SET_TARGET_POSITION:
       // DPARKER only activate these commands if we are in software control mode
       // For the moment they are always active
-      SetMotorTarget(ABSOLUTE_POSITION, data_word); 
+      SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, data_word); 
       break;
 
     case CMD_MOVE_CLOCKWISE:
       // DPARKER only activate these commands if we are in software control mode
       // For the moment they are always active
-      SetMotorTarget(RELATIVE_CLOCKWISE, data_word);
+      SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, data_word);
       break;
 
     case CMD_MOVE_COUNTER_CLOCKWISE:
       // DPARKER only activate these commands if we are in software control mode
       // For the moment they are always active
-      SetMotorTarget(RELATIVE_COUNTER_CLOCKWISE, data_word);
+      SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, data_word);
       break;
 
 
@@ -164,7 +165,14 @@ void ExecuteCommand(void) {
     case CMD_WRITE_EEPROM_REGISTER:
       break;
 
-  
+
+    case CMD_OVERCURRENT_SHUTDOWN_TEST:
+      IOCON1 = 0b0000001100000000;
+      IOCON2 = 0b0000001100000000;
+      IOCON3 = 0b0000001100000000;
+      IOCON4 = 0b0000001100000000;  
+      break;
+      
     }
 
   // Echo the command that was recieved back to the controller

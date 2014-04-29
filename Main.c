@@ -1,19 +1,15 @@
 #include <p30f2023.h>
 #include <libpic30.h>
 #include "Main.h"
-#include "tables.h"
+#include "Stepper.h"
 #include "Serial_A34405.h"
 
-_FOSCSEL(FRC_PLL);                          /* Internal FRC oscillator with PLL */
-//_FOSC(CSW_FSCM_OFF & FRC_HI_RANGE);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
-//_FGS(CODE_PROT_OFF & GWRP_OFF);                        /* Disable Code Protection */
-_FICD(ICS_PGD);                             /* Enable Primary ICP pins */
-//_FWDT(WDTPOST_PS2048 & WDTPRE_PR32 & FWDTEN_ON & WINDIS_OFF);                           /* Enable Watch Dog */
+_FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
+_FICD(ICS_PGD);                                         /* Enable Primary ICP pins */
 _FPOR(PWRT_128);
 _FBS(BWRP_OFF & NO_BOOT_CODE);
-
-_FGS(CODE_PROT_OFF);                        /* Disable Code Protection */
-_FWDT(FWDTEN_ON);                           /* Enable Watch Dog */
+_FGS(CODE_PROT_OFF);                                    /* Disable Code Protection */
+_FWDT(FWDTEN_ON & WDTPOST_PS2048 & WDTPRE_PR32);        /* Enable Watch Dog */ // DPARKER CALCULATE WDT TIMEOUT
 _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
 
 
@@ -28,37 +24,8 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
 */
 
 
-const unsigned int PWMHighPowerTable[128] = {FULL_POWER_TABLE_VALUES};
-const unsigned int PWMLowPowerTable[128] = {LOW_POWER_TABLE_VALUES};
-
-void InitPWM(void);
 
 
-#define MOTOR_DECREASE_CURRENT_PWM_CYCLES    4000 // .1 second
-
-
-#define FULL_STEP                 32
-
-#define MOVING_COUNTER_CLOCKWISE  0
-#define MOVING_CLOCKWISE          1
-#define MOTOR_STOPPED             2
-
-
-
-
-
-
-//#define MOTOR_FREQUENCY_DIVISOR   1
-//unsigned int frequency_divisor_counter;
-
-
-unsigned int motor_motion;
-
-unsigned int counterTablePWM;
-unsigned int counterPWM;
-unsigned long motor_stopped_counter; 
-
-unsigned int software_target_position;
 
 
 unsigned int manual_control_ccw_pulse_input_ready;
@@ -67,10 +34,9 @@ unsigned int manual_control_cw_pulse_input_ready;
 
 
 
-#define EEPROM_DELAY 1000
 
-STEPPER_MOTOR afc_motor;
 unsigned int control_state;
+
 void DoStateMachine(void);
 
 void InitPeripherals(void);
@@ -86,13 +52,13 @@ void ResetAllFaults(void) {
 }
 
 
-unsigned int home_position;
+
 unsigned int software_control_mode_selected;
 
 
 int main (void) {
   while(OSCCONbits.LOCK!=1);          /* Wait for PLL to lock */
-  __delay32(EEPROM_DELAY*10);         /* Wait for EEPROMs to settle */
+  //__delay32(EEPROM_DELAY*10);         /* Wait for EEPROMs to settle */
   __delay32(30000000);
   control_state = STATE_STARTUP;
   
@@ -244,21 +210,7 @@ void DoStateMachine(void) {
 }
 
 
-
-
-
-
-
-
-
-
 void InitPeripherals(void){
-
-  afc_motor.max_position = 1200;
-  afc_motor.min_position = 20;
-  afc_motor.target_position = 100;
-  afc_motor.current_position = 100;
-
   PIN_SAMPLE_TRIGGER = !OLL_TRIGGER_SH;
   PIN_BRIDGE_POWER_RELAY = !OLL_BRIDGE_POWER_RELAY_CLOSED;
   
@@ -276,7 +228,6 @@ void InitPeripherals(void){
   I2CBRG = I2C_BAUD_RATE_GENERATOR;
   */
 
-  counterTablePWM = 0;
 
 
   // Set up Interrupts
@@ -325,11 +276,11 @@ void InitPeripherals(void){
   // Configure T2
   /* With 29 MHz Clock and 256 pre-scale the minimum pulses per second is 2*/
 
-#define STEPS_PER_SECOND           100
+
 #define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
 #define T2_CONFIG_VALUE           0b1000000000110000   // Timer On and 256 Prescale
 
-
+  
   T2CON = T2_CONFIG_VALUE;
   PR2 = T2_PERIOD_VALUE;
   
@@ -379,201 +330,11 @@ void InitPeripherals(void){
 
 
 
-#define PWM_PWMCON_VALUE        0b0000000000000000
-
-/* 
-   Clear Fault Interrupt flag 
-   Clear Current Limit Interrupt flag 
-   Clear PWM Trigger Interrupt flag 
-   Disable Fault Interrupt 
-   Disable Current Limit Interrupt 
-   Disable Trigger Interrupt 
-   Time base is read from PTMR 
-   Duty cycle is read from PDC 
-   No extenal reset for PTMR
-   PWM updates synchronized to PWM time base
-*/
-
-#define PWM_IOCON_VALUE         0b1100000000000000
-/* 
-   PWM Module controls High output
-   PWM Module controls Low output 
-   Output Polarity is active High 
-   Low Output Polarity is active High 
-   Comp. output mode 
-   PWM Generator Provides data for High output 
-   PWM Generator Provides data for Low output 
-   If overide is enabled the outputs will be low 
-   Overide occurs on the next clock cycle, not the next PWM cycle 
-*/
-
-
-#define PWM_IOCON_VALUE_OVERRIDE  0b0000001100000000
-/* 
-   This value is loaded to shutdown the PWM pair by setting both gate drive outputs to zero.
-
-*/
-
-
-
- 
-void InitPWM(void) {
-  
-  PTPER = PTPER_VALUE;                      /* PTPER = FCY*32(PLL)/(Desired PWM Freq.) Refer to PWM section for more details   */
-
-  /* Initialize PWM Generator 1 */
-  IOCON1   = PWM_IOCON_VALUE;
-  PWMCON1  = PWM_PWMCON_VALUE;
-
-  DTR1     = DEADTIME;
-  ALTDTR1  = DEADTIME;
-  PDC1     = HALF_DC;                     
-  PHASE1   = 0;                     /* No staggering */
-
-  /* Initialize PWM Generator 2 */
-  IOCON2   = PWM_IOCON_VALUE;
-  PWMCON2  = PWM_PWMCON_VALUE;
-
-  DTR2     = DEADTIME;
-  ALTDTR2  = DEADTIME;
-  PDC2     = HALF_DC;                     
-  PHASE2   = 0;                     /* No staggering */
-
-
-  /* Initialize PWM Generator 3 */
-  IOCON3   = PWM_IOCON_VALUE;
-  PWMCON3  = PWM_PWMCON_VALUE;
-
-  DTR3     = DEADTIME;
-  ALTDTR3  = DEADTIME;
-  PDC3     = HALF_DC;                     
-  PHASE3   = 0;        /* No staggering */
-
-
-  /* Initialize PWM Generator 4 */
-  IOCON4   = PWM_IOCON_VALUE;
-  PWMCON4  = PWM_PWMCON_VALUE;
-
-  DTR4     = DEADTIME;
-  ALTDTR4  = DEADTIME;
-  PDC4     = HALF_DC;                     
-  PHASE4   = 0;        /* No staggering */	
-
-
-  SEVTCMP	                = 10;
-  PTCONbits.SEIEN               = 1;
-  PTCONbits.PTEN                = 1;        /* Enable PWM Module */
-  
-}
-
-
-
-
-#define MOTOR_SLOWDOWN_FACTOR 6
-unsigned int motor_slowdown;
-
-/******************************************************************************
-* Interrupt:     _PWMSpEventMatchInterrupt()
-*
-* Output:		None
-*
-* Overview:		ISR for PWM special event, executes duty cycle updates
-*
-* Note:			None
-*******************************************************************************/
-void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
-  unsigned int counterTablePWM_32;
-  unsigned int counterTablePWM_64;
-  unsigned int counterTablePWM_96;
-  _PSEMIF = 0;  
-
-  if (motor_motion != MOTOR_STOPPED) {
-    motor_stopped_counter = 0;
-    motor_slowdown++;
-    if (motor_slowdown >= MOTOR_SLOWDOWN_FACTOR) {
-      motor_slowdown = 0;
-      if (motor_motion == MOVING_CLOCKWISE) {
-	  counterTablePWM--;
-	} else {
-	  counterTablePWM++;
-	}
-      counterTablePWM &= 0x007F;
-      counterTablePWM_32 = counterTablePWM + 32;
-      counterTablePWM_32 &= 0x007F;
-      counterTablePWM_64 = counterTablePWM + 64;
-      counterTablePWM_64 &= 0x007F;
-      counterTablePWM_96 = counterTablePWM + 96;
-      counterTablePWM_96 &= 0x007F;
-
-      
-      PDC1 = PWMHighPowerTable[counterTablePWM];
-      PDC2 = PWMHighPowerTable[counterTablePWM_64];
-      PDC3 = PWMHighPowerTable[counterTablePWM_32];
-      PDC4 = PWMHighPowerTable[counterTablePWM_96];
-      
-      counterPWM++;
-      if (counterPWM >= FULL_STEP) {
-	counterPWM = 0;
-	if (motor_motion == MOVING_CLOCKWISE) {
-	  if (afc_motor.current_position < 0xFFFF) {
-	    afc_motor.current_position++;
-	  }
-	} else {
-	  if (afc_motor.current_position > 0) {
-	    afc_motor.current_position--;
-	  }
-	}
-	motor_motion = MOTOR_STOPPED;
-      }
-    }
-  } else {
-    motor_stopped_counter++;
-    if (motor_stopped_counter >= MOTOR_DECREASE_CURRENT_PWM_CYCLES) {
-      motor_stopped_counter = MOTOR_DECREASE_CURRENT_PWM_CYCLES;
-      counterTablePWM &= 0x007F;
-      counterTablePWM_32 = counterTablePWM + 32;
-      counterTablePWM_32 &= 0x007F;
-      counterTablePWM_64 = counterTablePWM + 64;
-      counterTablePWM_64 &= 0x007F;
-      counterTablePWM_96 = counterTablePWM + 96;
-      counterTablePWM_96 &= 0x007F;
-
-      PDC1 = PWMLowPowerTable[counterTablePWM];
-      PDC2 = PWMLowPowerTable[counterTablePWM_64];
-      PDC3 = PWMLowPowerTable[counterTablePWM_32];
-      PDC4 = PWMLowPowerTable[counterTablePWM_96];
-      
-    }
-  }
-}
-
-
 void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   _INT0IF = 0;  
 }
 
 
-/******************************************************************************
-* Interrupt:     _INT2Interrupt()
-*
-* Output:	None
-*
-* Overview:	ISR for external interrupt INT2, triggers on falling edge for Over Current fault
-*
-* Note:		None
-*******************************************************************************/
-void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
-  // Shutdown the PWM and save the fault
-  // Active the override regisiters (set to zero in the configuration)
-  _INT2IF = 0;
-  
-  IOCON1 = PWM_IOCON_VALUE_OVERRIDE;
-  IOCON2 = PWM_IOCON_VALUE_OVERRIDE;
-  IOCON3 = PWM_IOCON_VALUE_OVERRIDE;
-  IOCON4 = PWM_IOCON_VALUE_OVERRIDE;
- 
-  // DPARKER need to save that there was a fault somehow so that we can move to fault state
-}
 
 
 // DPARKER THIS FUNCTION FOR DEBUGGING ONLY
@@ -585,61 +346,4 @@ void  __attribute__((interrupt, no_auto_psv)) _DefaultInterrupt(void) {
 
 
 
-/******************************************************************************
-* Interrupt:     _T2Interrupt
-*
-* Output:		None
-*
-* Overview:		T2 Interrupt
-*
-* Note:			None
-*******************************************************************************/
-void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
-  _T2IF = 0;
-  if (motor_motion == MOTOR_STOPPED) {
-    if (afc_motor.target_position > afc_motor.max_position) {
-      afc_motor.target_position = afc_motor.max_position;
-    }
-    if (afc_motor.target_position < afc_motor.min_position) {
-      afc_motor.target_position = afc_motor.min_position;
-    }
-    if (afc_motor.current_position > afc_motor.target_position) {
-      motor_motion = MOVING_COUNTER_CLOCKWISE;
-    } else if (afc_motor.current_position < afc_motor.target_position) {
-      motor_motion = MOVING_CLOCKWISE;
-    } 
-  }
-}
 
-
-void SetMotorTarget(unsigned int position_type, unsigned int value) {
-  unsigned int current_target;
-  unsigned int new_target;
-  
-  current_target = afc_motor.target_position;
-  
-  if (position_type == ABSOLUTE_POSITION) {
-    new_target = value;
-  } else if (position_type == RELATIVE_CLOCKWISE) {
-    if ((0xFFFF-value) > current_target) {
-      new_target = current_target + value;
-    } else {
-      new_target = 0xFFFF;
-    }
-  } else if (position_type == RELATIVE_COUNTER_CLOCKWISE) {
-    if (current_target >= value) {
-      new_target = current_target - value;
-    } else {
-      new_target = 0;
-    }    
-  }
-  if (new_target >= afc_motor.max_position) {
-    new_target = afc_motor.max_position;
-  } 
-  if (new_target <= afc_motor.min_position) {
-    new_target = afc_motor.min_position;
-  }
-  
-  afc_motor.target_position = new_target;
-
-}

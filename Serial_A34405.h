@@ -1,5 +1,6 @@
 #ifndef __SERIAL_A34405_H
 #define __SERIAL_A34405_H
+
 #include "ETM_BUFFER_BYTE_64.h"
 #include <uart.h>
 
@@ -10,7 +11,7 @@
 #define CMD_MOVE_COUNTER_CLOCKWISE                      0x34
 #define CMD_READ_EEPROM_REGISTER                        0x40
 #define CMD_WRITE_EEPROM_REGISTER                       0x42
-
+#define CMD_OVERCURRENT_SHUTDOWN_TEST                   0xE0
 
 
 
