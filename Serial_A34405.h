@@ -12,7 +12,8 @@
 #define CMD_READ_EEPROM_REGISTER                        0x40
 #define CMD_WRITE_EEPROM_REGISTER                       0x42
 #define CMD_OVERCURRENT_SHUTDOWN_TEST                   0xE0
-
+#define CMD_READ_FAST_AFC_DATA                          0x51
+#define CMD_READ_SLOW_AFC_DATA                          0x52
 
 
 
@@ -24,6 +25,11 @@
 #define RAM_READ_CURRENT_POSITION                       0x10
 #define RAM_READ_TARGET_POSITION                        0x20
 
+#define RAM_READ_ADCBUF0                                0x30
+#define RAM_READ_ADCBUF1                                0x31
+#define RAM_READ_ADC_MOTOR_CURRENT_A                    0x32
+#define RAM_READ_ADC_MOTOR_CURRENT_B                    0x33
+#define RAM_READ_ADC_PARAMETER_INPUT                    0x3B
 
 
 

@@ -165,6 +165,14 @@ void ExecuteCommand(void) {
     case CMD_WRITE_EEPROM_REGISTER:
       break;
 
+    case CMD_READ_FAST_AFC_DATA:
+      return_data_word = frequency_error_fast_history[command_string.register_byte];
+      break;
+      
+    case CMD_READ_SLOW_AFC_DATA:
+      return_data_word = frequency_error_slow_history[command_string.register_byte];
+      break;
+
 
     case CMD_OVERCURRENT_SHUTDOWN_TEST:
       IOCON1 = 0b0000001100000000;

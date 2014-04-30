@@ -66,7 +66,8 @@
 extern unsigned int control_state;
 
 
-
+extern signed int frequency_error_fast_history[8];
+extern signed int frequency_error_slow_history[64];
 
 
 

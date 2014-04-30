@@ -1,5 +1,6 @@
 #include <p30f2023.h>
 #include <libpic30.h>
+#include <smpsadc.h>
 #include "Main.h"
 #include "Stepper.h"
 #include "Serial_A34405.h"
@@ -32,8 +33,13 @@ unsigned int manual_control_ccw_pulse_input_ready;
 unsigned int manual_control_cw_pulse_input_ready;
       
 
+unsigned int number_of_running_pulses;
 
+signed int frequency_error_fast_history[8];
+signed int frequency_error_slow_history[64];
 
+unsigned int frequency_error_slow_history_next_location;
+#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE 128
 
 unsigned int control_state;
 
@@ -234,7 +240,7 @@ void InitPeripherals(void){
   // Set up external INT0 */
   // This is the trigger interrupt
   _INT0IF = 0;		// Clear Interrupt flag
-  _INT0IE = 0;		// Disable INT0 Interrupt
+  _INT0IE = 1;		// Disable INT0 Interrupt
   _INT0EP = 1; 	        // Interrupt on falling edge
   _INT0IP = 7;		// Set interrupt to highest priority
   // triggerINT = 0;  // DPARKER, I have no clue WTF this was
@@ -325,13 +331,118 @@ void InitPeripherals(void){
   _U1RXIE = 1;	// Enable Recieve Interrupts  
   U1MODEbits.UARTEN = 1;	// And turn the peripheral on
   U1STA = 0b0000010000000000;   // The U1STA register must be set AFTER the module is enabled for some reason
+
+
+
+
+
+  // ----------------- CONFIGURE ADC ---------------- //
+  //#define ADCON_DEFAULT     0b1000000000100101 
+  #define ADCON_DEFAULT (ADC_MOD_EN || ADC_IDLE_CONT || ADC_SOFT_TRIG_DIS || ADC_DATA_INT || ADC_INT_EN_2CONV || ADC_ORDER_EVEN_FST || ADC_SAMP_SEQ || ADC_PLL_EN_FADC_14)
+  
+#define ADPCFG_DEFAULT    0b1111011111110000  // AN0,AN1,AN2,AN3,AN11
+
+#define ADCPC0_DEFAULT (ADC_AN1_0_IR_GEN_DIS || ADC_AN1_0_TRIG_INDV_SW ||  ADC_AN3_2_IR_GEN_DIS   || ADC_AN3_2_TRIG_INDV_SW)
+#define ADCPC1_DEFAULT (ADC_AN5_4_IR_GEN_DIS || ADC_AN5_4_NOCONV       ||  ADC_AN7_6_IR_GEN_DIS   || ADC_AN7_6_NOCONV)
+#define ADCPC2_DEFAULT (ADC_AN9_8_IR_GEN_DIS || ADC_AN9_8_NOCONV       ||  ADC_AN11_10_IR_GEN_DIS || ADC_AN11_10_TRIG_INDV_SW)
+
+  ADSTAT = 0;               // Clear the status register
+  ADCON = ADCON_DEFAULT;
+  ADPCFG = ADPCFG_DEFAULT;
+  ADCPC0 = ADCPC0_DEFAULT;
+  ADCPC1 = ADCPC1_DEFAULT;
+  ADCPC2 = ADCPC2_DEFAULT;
+
+  
+
+
 }    
 
 
 
 
 void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
-  _INT0IF = 0;  
+  /* 
+     This is the signal that pulse has been sent to the linac
+     Need to trigger the sample and hold after correct delay and schedule the ADC to read those sampled values.
+  */ 
+
+  unsigned int n;
+  unsigned int sigma_data;
+  unsigned int delta_data; 
+  signed int frequency_error;
+
+  _INT0IF = 0;
+
+  // DPARKER DELAY UNTILL WE HAVE A GOOD SIGNAL ON SIGMA/DELTA
+  __delay32(99); // 3uS
+
+  PIN_SAMPLE_TRIGGER = OLL_TRIGGER_SH;
+  __delay32(20);
+
+  // DPARKER DELAY SAMPLE TIME - At least 300ns, but longer would be better
+
+  PIN_SAMPLE_TRIGGER = !OLL_TRIGGER_SH;
+  // DPARKER DELAY OUTPUT TIME - 2us According to spec sheet
+  // DPARKER DELAY Until the output pulse has died down a bit so system is less noise
+  // 20us Total
+  __delay32(600);
+
+
+
+  n = 0;
+  sigma_data = 0;
+  delta_data = 0;
+
+
+  _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
+  while (n++<14) {
+    while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
+    sigma_data += ADCBUF0;
+    delta_data += ADCBUF1;
+    _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
+  } 
+  while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
+  sigma_data += ADCBUF0;
+  delta_data += ADCBUF1;
+  sigma_data >>= 3;
+  delta_data >>= 3;
+  // save the accumulated data to RAM
+  frequency_error = sigma_data - delta_data;
+  frequency_error_slow_history[frequency_error_slow_history_next_location] = frequency_error;
+  frequency_error_slow_history_next_location++;
+  frequency_error_slow_history_next_location &= 0x007F;
+
+  if (number_of_running_pulses <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+    frequency_error_fast_history[0] = frequency_error;
+    if (number_of_running_pulses == 1) {
+      // DPARKER run fast filter with n=1 filter data
+    } else if (number_of_running_pulses == 2) {
+      // DPARKER run fast filter with n=2 filter data
+    } else if (number_of_running_pulses == 3) {
+      // DPARKER run fast filter with n=3 filter data
+    } else if (number_of_running_pulses == 4) {
+      // DPARKER run fast filter with n=4 filter data
+    } else if (number_of_running_pulses == 5) {
+      // DPARKER run fast filter with n=5 filter data
+    } else if (number_of_running_pulses == 6) {
+      // DPARKER run fast filter with n=6 filter data
+    } else if (number_of_running_pulses == 7) {
+      // DPARKER run fast filter with n=7 filter data
+    } else {
+      // DPARKER run fast filter with n=8 filter data
+    }
+    // DPARKER data will now be stored in sigma_filtered & delta_filtered
+    // DPARKER run modified PID based upon the current motor position and the filtered sigma & delta data
+  } else {
+    // We are in steady state operation.  Need to move the motor much slower
+    // DPARKER Average data in 128 value buffer and use that
+    // DPARKER use that averaged data to feed into the "slow" PID
+  }
+
+  Nop();
+  Nop();
+  Nop();
 }
 
 

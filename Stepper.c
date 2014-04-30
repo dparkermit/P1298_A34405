@@ -21,6 +21,14 @@ unsigned long motor_stopped_counter;
 
 unsigned int motor_slowdown;
 
+unsigned int adc_average_counter;
+unsigned int adc_parameter_input_accumulator;
+unsigned int adc_motor_current_a_accumulator;
+unsigned int adc_motor_current_b_accumulator;
+
+unsigned int adc_parameter_input;
+unsigned int adc_motor_current_a;
+unsigned int adc_motor_current_b;
 
 
 
@@ -164,6 +172,25 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
   unsigned int counterTablePWM_64;
   unsigned int counterTablePWM_96;
   _PSEMIF = 0;  
+
+
+  // We average the adc_motor_currents and the parameter input over 64 motor PWM cycles (1.6mS)
+  adc_average_counter++;
+  if (adc_average_counter > 64) {
+    adc_average_counter = 0;
+    adc_parameter_input = adc_parameter_input_accumulator;
+    adc_motor_current_a = adc_motor_current_a_accumulator;
+    adc_motor_current_b = adc_motor_current_b_accumulator;
+    adc_parameter_input_accumulator = 0;
+    adc_motor_current_a_accumulator = 0;
+    adc_motor_current_b_accumulator = 0;
+  }
+  adc_parameter_input_accumulator += ADCBUF11;
+  adc_motor_current_b_accumulator += ADCBUF2;
+  adc_motor_current_b_accumulator += ADCBUF3;
+  _SWTRG1 = 1;  // Trigger conversion on motor currents
+  _SWTRG5 = 1;  // Trigger conversion on parameter input
+
 
   if (motor_motion != MOTOR_MOTION_STOPPED) {
     motor_stopped_counter = 0;
