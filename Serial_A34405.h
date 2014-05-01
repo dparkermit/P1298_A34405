@@ -14,6 +14,7 @@
 #define CMD_OVERCURRENT_SHUTDOWN_TEST                   0xE0
 #define CMD_READ_FAST_AFC_DATA                          0x51
 #define CMD_READ_SLOW_AFC_DATA                          0x52
+#define CMD_READ_MEM_LOCATION                           0x54
 
 
 

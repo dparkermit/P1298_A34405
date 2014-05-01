@@ -174,6 +174,10 @@ void ExecuteCommand(void) {
       break;
 
 
+    case CMD_READ_MEM_LOCATION:
+      return_data_word = &data_word; // DPARKER will this work???
+      break;
+
     case CMD_OVERCURRENT_SHUTDOWN_TEST:
       IOCON1 = 0b0000001100000000;
       IOCON2 = 0b0000001100000000;
@@ -211,7 +215,30 @@ unsigned int ReadFromRam(unsigned int ram_location) {
     case RAM_READ_TARGET_POSITION:
       data_return = afc_motor.target_position;
       break;
+
+    case RAM_READ_ADCBUF0:
+      data_return = ADCBUF0;
+      break;
+
+    case RAM_READ_ADCBUF1:
+      data_return = ADCBUF1;
+      break;
+      
+    case RAM_READ_ADC_MOTOR_CURRENT_A:
+      data_return = adc_motor_current_a;
+      break;
+
+    case RAM_READ_ADC_MOTOR_CURRENT_B:
+      data_return = adc_motor_current_b;
+      break;
+
+    case RAM_READ_ADC_PARAMETER_INPUT:
+      data_return = adc_parameter_input;
+      break;
+
+
     }  
+  
   return data_return;
 }
 
