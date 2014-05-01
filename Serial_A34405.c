@@ -175,7 +175,7 @@ void ExecuteCommand(void) {
 
 
     case CMD_READ_MEM_LOCATION:
-      return_data_word = &data_word; // DPARKER will this work???
+      //return_data_word = &data_word; // DPARKER will this work???
       break;
 
     case CMD_OVERCURRENT_SHUTDOWN_TEST:

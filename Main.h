@@ -5,9 +5,9 @@
 #define FCY                         29100000    /* FRC = 14.55MHz , PLL= X32 , FCY = 14.55e6*32/8/2 = 29.1e6 */
 
 
-#define I2C_CLK                     100000      /* I2C running at 100KHz */
-#define PGD_CONST                   0.000000250
-#define I2C_BAUD_RATE_GENERATOR	    0x11B       /*(unsigned int)((1/I2C_CLK - PGD_CONST)*FCY - 1)*/
+#define I2C_CLK                     100000      /* I2C running at 400KHz */
+#define I2C_PGD_CONST_FCY           26
+//#define I2C_BAUD_RATE_GENERATOR	    0x11B       /*(unsigned int)((1/I2C_CLK - PGD_CONST)*FCY - 1)*/
 
 
 
@@ -63,12 +63,14 @@
 #define PIN_SPARE_OUT                 _LATF14
 
 
-extern unsigned int control_state;
+extern unsigned char control_state;
 
 
 extern signed int frequency_error_fast_history[8];
-extern signed int frequency_error_slow_history[64];
+extern signed int frequency_error_slow_history[8];
 
+extern signed int frequency_error_filtered;
 
+extern unsigned int prf_counter;
 
 #endif

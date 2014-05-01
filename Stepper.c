@@ -2,7 +2,7 @@
 #include "Stepper.h"
 #include "Tables.h"
 #include "Main.h"
-
+#include "MCP4725.h"
 
 // Global Variables
 unsigned int motor_motion;
@@ -17,7 +17,7 @@ const unsigned int PWMLowPowerTable[128] = {LOW_POWER_TABLE_VALUES};
 
 unsigned int counterTablePWM;
 unsigned int counterPWM;
-unsigned long motor_stopped_counter; 
+unsigned int motor_stopped_counter; 
 
 unsigned int motor_slowdown;
 
@@ -31,6 +31,8 @@ unsigned int adc_motor_current_a;
 unsigned int adc_motor_current_b;
 
 
+unsigned int pulse_frequency;
+unsigned int four_second_counter = 0;
 
 #define PWM_PWMCON_VALUE        0b0000000000000000
 /* 
@@ -69,7 +71,10 @@ unsigned int adc_motor_current_b;
 void InitPWM(void) {
 
   counterTablePWM = 0;
-
+  adc_average_counter = 0;
+  adc_parameter_input_accumulator = 0;
+  adc_motor_current_a_accumulator = 0;
+  adc_motor_current_b_accumulator = 0;
   
   PTPER = PTPER_VALUE;                      /* PTPER = FCY*32(PLL)/(Desired PWM Freq.) Refer to PWM section for more details   */
 
@@ -116,10 +121,11 @@ void InitPWM(void) {
   PTCONbits.SEIEN               = 1;
   PTCONbits.PTEN                = 1;        // Enable the PWM Module  
   
-  afc_motor.max_position = 1200;
-  afc_motor.min_position = 20;
-  afc_motor.target_position = 100;
-  afc_motor.current_position = 100;
+  afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
+  afc_motor.min_position = MOTOR_MINIMUM_POSITION;
+  afc_motor.home_position = MOTOR_DEFAULT_HOME_POSITION;
+  afc_motor.target_position = afc_motor.home_position;
+  afc_motor.current_position = afc_motor.home_position;
   
 }
 
@@ -167,7 +173,8 @@ void SetMotorTarget(unsigned int position_type, unsigned int value) {
 *
 * Note:			None
 *******************************************************************************/
-void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
+void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchInterrupt(void) {
+  //void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
   unsigned int counterTablePWM_32;
   unsigned int counterTablePWM_64;
   unsigned int counterTablePWM_96;
@@ -176,7 +183,7 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
 
   // We average the adc_motor_currents and the parameter input over 64 motor PWM cycles (1.6mS)
   adc_average_counter++;
-  if (adc_average_counter > 64) {
+  if (adc_average_counter >= 64) {
     adc_average_counter = 0;
     adc_parameter_input = adc_parameter_input_accumulator;
     adc_motor_current_a = adc_motor_current_a_accumulator;
@@ -186,12 +193,14 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
     adc_motor_current_b_accumulator = 0;
   }
   adc_parameter_input_accumulator += ADCBUF11;
-  adc_motor_current_b_accumulator += ADCBUF2;
+  adc_motor_current_a_accumulator += ADCBUF2;
   adc_motor_current_b_accumulator += ADCBUF3;
   _SWTRG1 = 1;  // Trigger conversion on motor currents
   _SWTRG5 = 1;  // Trigger conversion on parameter input
 
 
+
+  
   if (motor_motion != MOTOR_MOTION_STOPPED) {
     motor_stopped_counter = 0;
     motor_slowdown++;
@@ -247,10 +256,11 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
       PDC2 = PWMLowPowerTable[counterTablePWM_64];
       PDC3 = PWMLowPowerTable[counterTablePWM_32];
       PDC4 = PWMLowPowerTable[counterTablePWM_96];
-      
     }
   }
+
 }
+
 
 
 
@@ -264,7 +274,10 @@ void __attribute__((interrupt, no_auto_psv)) _PWMSpEventMatchInterrupt(void) {
 * Note:			None
 *******************************************************************************/
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
+  unsigned int data_word;
   _T2IF = 0;
+
+  // Update the motor position
   if (motor_motion == MOTOR_MOTION_STOPPED) {
     if (afc_motor.target_position > afc_motor.max_position) {
       afc_motor.target_position = afc_motor.max_position;
@@ -277,6 +290,43 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
     } else if (afc_motor.current_position < afc_motor.target_position) {
       motor_motion = MOTOR_MOTION_CLOCKWISE;
     } 
+  }
+
+  // Update the feedback to the control board.
+  /*
+    Based on the value of the spare analog input (adc_parameter_input) we return different data on the DAC
+    
+    adc_parameter_input = 0,  0,      0     -> 6553   = Return Motor Position        (voltage scaling = ???)
+    adc_parameter_input = 1V, 13107,  6554  -> 13107  = Return Simga Reading         (voltage scaling = ???)
+    adc_parameter_input = 2V, 26214,  13108 -> 32767  = Return Delta Reading
+    adc_parameter_input = 3V, 39321,  32768 -> 45874  = Return Pulse Rate Reading    (voltage scaling = ???)
+    adc_parameter_input = 4V, 53428,  45785 -> 58981  = N/A Returns 0x0000
+    adc_parameter_input = 5V, 65535,  58982 -> 65535  = N/A Returns 0x0000
+  */
+  
+  if (adc_parameter_input <= 6553) {
+    data_word = (afc_motor.current_position << 2);
+  } else if (adc_parameter_input <= 13107) {
+    data_word = 0x0000; 
+  } else if (adc_parameter_input <= 32767) {
+    data_word = 0x0000;
+  } else if (adc_parameter_input <= 45874) {
+    data_word = (pulse_frequency << 2);
+  } else if (adc_parameter_input <= 58981) {
+    data_word = 0x0000;
+  } else {
+    data_word = 0x0000;
+  }
+  
+  U24_MCP4725.data_12_bit = data_word;
+  MCP4725UpdateFast(&U24_MCP4725);
+  
+  
+  four_second_counter++;
+  if (four_second_counter >= (STEPS_PER_SECOND<<2)) {
+    four_second_counter = 0;
+    pulse_frequency = (prf_counter *10) >> 2;
+    prf_counter = 0;
   }
 }
 

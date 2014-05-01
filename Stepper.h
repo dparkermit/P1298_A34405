@@ -7,11 +7,15 @@
 #define DEADTIME_NANO_SECONDS      600         // This is the deadtime between the motor drive mosfets
 #define MOTOR_SLOWDOWN_FACTOR      6           // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
 #define MOTOR_LOW_POWER_DELAY      .1          // This is the time (in seconds) that the system wait with no motor movement to switch to low power mode
+                                               // This value must be less than or equal to 1.5 second
 
+#define MOTOR_MINIMUM_POSITION      100
+#define MOTOR_MAXIMUM_POSITION      800
+#define MOTOR_DEFAULT_HOME_POSITION 600
 
 #define DEADTIME                (unsigned int)(DEADTIME_NANO_SECONDS/1.07)
 #define PTPER_VALUE             (unsigned int)(FCY*32/MOTOR_PWM_FCY)
-#define MOTOR_DECREASE_CURRENT_PWM_CYCLES    (unsigned long) (MOTOR_PWM_FCY * MOTOR_LOW_POWER_DELAY)
+#define MOTOR_DECREASE_CURRENT_PWM_CYCLES    (unsigned int) (MOTOR_PWM_FCY * MOTOR_LOW_POWER_DELAY)
 
 
 void InitPWM(void);
@@ -50,5 +54,6 @@ extern unsigned int adc_parameter_input;
 extern unsigned int adc_motor_current_a;
 extern unsigned int adc_motor_current_b;
 
+extern unsigned int pulse_frequency;
 
 #endif
