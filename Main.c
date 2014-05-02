@@ -21,26 +21,29 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
    INT0 - Trigger Input
    INT2 - Motor Overcurrent
 
+   TMR1 - Use for general timing functions - Set to .1 S
    TMR2(Dan) - Used to time the motor position
 
 */
 
 
 
+typedef struct {
+  unsigned int sigma_data;
+  unsigned int delta_data;
+  signed int frequency_error_filtered;
+  signed int frequency_error_history[32];
+  unsigned char data_pointer; 
+  unsigned char trigger_complete;
+  unsigned int pulses_on;
+  unsigned int time_off;
+} TYPE_AFC_DATA;
 
+TYPE_AFC_DATA afc_data;
 
 unsigned char manual_control_ccw_pulse_input_ready;
 unsigned char manual_control_cw_pulse_input_ready;
       
-
-unsigned int number_of_running_pulses;
-
-signed int frequency_error_fast_history[8];
-signed int frequency_error_slow_history[8];
-signed int frequency_error_filtered;
-
-unsigned int frequency_error_slow_history_next_location;
-#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE 128
 
 unsigned char control_state;
 
@@ -188,6 +191,11 @@ void DoStateMachine(void) {
     while (control_state == STATE_AFC_START_UP) {
       DoSerialCommand();
       ClrWdt();
+      if (trigger_complete) {
+	trigger_complete = 1;
+	FilterFrequencyError();
+      }
+      if (cooldown_timer > }
       //SetMotorTarget(&afc_motor, home_position);
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -217,7 +225,7 @@ void DoStateMachine(void) {
   }
 }
 
-
+  
 void InitPeripherals(void){
   PIN_SAMPLE_TRIGGER = !OLL_TRIGGER_SH;
   PIN_BRIDGE_POWER_RELAY = !OLL_BRIDGE_POWER_RELAY_CLOSED;
@@ -366,10 +374,62 @@ void InitPeripherals(void){
   U24_MCP4725.write_error_count = 0;
 
   SetupMCP4725(&U24_MCP4725);
-
+  
   prf_counter = 0;
 }    
+ 
+ 
+void FilterFrequencyError(void) {
+  signed int error;
 
+  // Sigma/delta data is 10 bit unsigned so we should have no problem with the conversion to signed and overflow even with the frequency error offset.
+  error = afc_data.sigma_data - afc_data.delta_data;
+  error += frequency_error_offset;
+  afc_data.data_pointer++;
+  afc_data.data_pointer &= 0x1F;
+  afc_data.frequency_error_history[afc_data.data_pointer] = error;
+  afc_data.pulses_on++;
+  if (afc_data.pulses_on > 0xFF00) {
+    afc_data.pulses_on = 0xFF00;
+  }
+  if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+    /*
+      The magnetron has just turned on after being off for a period of time.
+      The tuner *could* be wildly out of position.
+      We need to react to the incoming data from AFC very quickly
+      This means less filtering and and high gain integral response - Max 4 Steps per sample
+    */
+    afc_data.frequency_error_filtered = FastFilter();
+    if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_4) {
+      
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_3) {
+      
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_2) {
+      
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_1) {
+      
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_0) {
+      // DO NOTHING!!!
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_NEG_1) {
+      
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_NEG_2) {
+      
+    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_NEG_3) {
+      
+    } else {
+      
+    }
+  } else {    
+    /*
+      The magnetron has been pulsing for a while.
+      The tuner is very close to where it should be so we just need to correct for minor drifts
+      We can filter/average the incoming data over a longer timeframe
+      The gain of the response can be much lower - Max 1 step per 8 samples
+    */
+    afc_data.frequency_error_filtered = SlowFilter()
+
+  }
+}
 
 
 
@@ -380,9 +440,6 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   */ 
   
   unsigned int n;
-  unsigned int sigma_data;
-  unsigned int delta_data; 
-  signed int frequency_error;
   
   _INT0IF = 0;
   
@@ -399,29 +456,29 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   // DPARKER DELAY Until the output pulse has died down a bit so system is less noise
   // 20us Total
   __delay32(600);
-  
-
-  
+    
   n = 0;
-  sigma_data = 0;
-  delta_data = 0;
+  afc_data.sigma_data = 0;
+  afc_data.delta_data = 0;
 
   _P0RDY = 0;
   _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
   while (n<14) {
     n++;
     while(!_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
-    sigma_data += ADCBUF0;
-    delta_data += ADCBUF1;
+    afc_data.sigma_data += ADCBUF0;
+    afc_data.delta_data += ADCBUF1;
     _P0RDY = 0;
     _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
   } 
   // while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
   while(!_P0RDY);
-  sigma_data += ADCBUF0;
-  delta_data += ADCBUF1;
-  sigma_data >>= 4;
-  delta_data >>= 4;
+  afc_data.sigma_data += ADCBUF0;
+  afc_data.delta_data += ADCBUF1;
+  afc_data.sigma_data >>= 4;
+  afc_data.delta_data >>= 4;
+
+  trigger_complete = 1;
 
   // save the accumulated data to RAM
   frequency_error = sigma_data - delta_data;
