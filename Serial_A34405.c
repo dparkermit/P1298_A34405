@@ -165,15 +165,10 @@ void ExecuteCommand(void) {
     case CMD_WRITE_EEPROM_REGISTER:
       break;
 
-    case CMD_READ_FAST_AFC_DATA:
-      return_data_word = frequency_error_fast_history[command_string.register_byte];
+    case CMD_READ_AFC_ERROR_DATA_HISTORY:
+      return_data_word = afc_data.frequency_error_history[command_string.register_byte];
       break;
       
-    case CMD_READ_SLOW_AFC_DATA:
-      return_data_word = frequency_error_slow_history[command_string.register_byte];
-      break;
-
-
     case CMD_READ_MEM_LOCATION:
       //return_data_word = &data_word; // DPARKER will this work???
       break;
@@ -236,6 +231,17 @@ unsigned int ReadFromRam(unsigned int ram_location) {
       data_return = adc_parameter_input;
       break;
 
+    case RAM_READ_SIGMA_DATA:
+      data_return = afc_data.sigma_data;
+      break;
+
+    case RAM_READ_DELTA_DATA:
+      data_return = afc_data.delta_data;
+      break;
+
+    case RAM_READ_FREQUENCY_ERROR_FILTERED:
+      data_return = afc_data.frequency_error_filtered;
+      break;
 
     }  
   

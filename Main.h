@@ -26,10 +26,8 @@
 #define STATE_MOTOR_STARTUP_HOME 0x24
 #define STATE_RESET              0x30
 #define STATE_AFC_NOT_PULSING    0x40
-#define STATE_AFC_START_UP       0x44
-#define STATE_AFC_STEADY_STATE   0x48
+#define STATE_AFC_PULSING        0x44
 #define STATE_MANUAL_MODE        0x50
-#define STATE_SOFTWARE_CONTROL   0x60
 #define STATE_FAULT              0xF0
 
 
@@ -66,11 +64,27 @@
 extern unsigned char control_state;
 
 
-extern signed int frequency_error_fast_history[8];
-extern signed int frequency_error_slow_history[8];
-
-extern signed int frequency_error_filtered;
 
 extern unsigned int prf_counter;
+
+
+typedef struct {
+  unsigned int sigma_data;
+  unsigned int delta_data;
+  signed int frequency_error_filtered;
+  signed int frequency_error_history[16];
+  signed int frequency_error_offset;
+  unsigned char data_pointer; 
+  unsigned char trigger_complete;
+  signed char slow_response_error_counter;
+  unsigned int pulses_on;
+  unsigned int time_off_100ms_units;
+} TYPE_AFC_DATA;
+
+extern TYPE_AFC_DATA afc_data;
+
+extern unsigned int pulse_frequency;
+
+
 
 #endif

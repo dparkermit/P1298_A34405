@@ -6,6 +6,9 @@
 #include "Serial_A34405.h"
 #include "MCP4725.h"
 
+
+#define LINAC_COOLDOWN_OFF_TIME           30  // 3 seconds
+
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
 _FICD(ICS_PGD);                                         /* Enable Primary ICP pins */
 _FPOR(PWRT_128);
@@ -21,33 +24,35 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
    INT0 - Trigger Input
    INT2 - Motor Overcurrent
 
-   TMR1 - Use for general timing functions - Set to .1 S
-   TMR2(Dan) - Used to time the motor position
+   PWM_SPECIAL_EVENT_TRIGGER - Used to generate current waveforms
+
+   TMR1 - Used for general timing functions - Set to .1 S
+   TMR2 - Used to time the motor movement.  
+
+   UART1 - Used for Digital Serial Link
+   I2C - Connected to ADC and (possibly EEPROM)
+   
 
 */
 
 
-
-typedef struct {
-  unsigned int sigma_data;
-  unsigned int delta_data;
-  signed int frequency_error_filtered;
-  signed int frequency_error_history[32];
-  unsigned char data_pointer; 
-  unsigned char trigger_complete;
-  unsigned int pulses_on;
-  unsigned int time_off;
-} TYPE_AFC_DATA;
+// GLOBAL Vairables
 
 TYPE_AFC_DATA afc_data;
+unsigned char control_state;
+unsigned int prf_counter;
+unsigned int pulse_frequency;
 
+
+
+// Local Variables and Function Prototypes
 unsigned char manual_control_ccw_pulse_input_ready;
 unsigned char manual_control_cw_pulse_input_ready;
-      
+unsigned char four_second_counter = 0;
 
-unsigned char control_state;
 
-unsigned int prf_counter;
+
+void DoAFC(void);
 
 void DoStateMachine(void);
 
@@ -62,6 +67,10 @@ unsigned int FaultCheck(void) {
 void ResetAllFaults(void);
 void ResetAllFaults(void) {
 }
+
+signed int FrequencyErrorFilterSlowResponse();
+signed int FrequencyErrorFilterFastResponse();
+
 
 
 
@@ -128,7 +137,7 @@ void DoStateMachine(void) {
     if (FaultCheck()) {
       control_state = STATE_FAULT;
     } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
-      control_state = STATE_AFC_START_UP;
+      control_state = STATE_AFC_PULSING;
     } else {
       control_state = STATE_MANUAL_MODE;
     }
@@ -137,36 +146,28 @@ void DoStateMachine(void) {
     
   case STATE_MANUAL_MODE:
     while (control_state == STATE_MANUAL_MODE) {
-      DoSerialCommand();
       ClrWdt();
-      
-      
+      DoSerialCommand();
+
+      // Look for a pulse on the counter clockwise pin
       if (PIN_STEP_COUNTER_CLOCKWISE != ILL_STEP_PIN_ACTIVE) {
 	manual_control_ccw_pulse_input_ready = 1;
       }
+      if (manual_control_ccw_pulse_input_ready && (PIN_STEP_COUNTER_CLOCKWISE == ILL_STEP_PIN_ACTIVE)) {
+	manual_control_ccw_pulse_input_ready = 0;
+	SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, 1);
+      }
+
+      // Look for a pulse on the clockwise pin
       if (PIN_STEP_CLOCKWISE != ILL_STEP_PIN_ACTIVE) {
 	manual_control_cw_pulse_input_ready = 1;
       }
-      if (manual_control_ccw_pulse_input_ready && (PIN_STEP_COUNTER_CLOCKWISE == ILL_STEP_PIN_ACTIVE)) {
-	manual_control_ccw_pulse_input_ready = 0;
-	if (afc_motor.target_position <= (afc_motor.min_position + 1)) {
-	  afc_motor.target_position = afc_motor.min_position;
-	} else {
-	  afc_motor.target_position = afc_motor.target_position - 1;
-	}
-	__delay32(30000); // Delay 30K Clock cycles so that bounces on the step signal will not cause multiple motor steps
-      }
-
       if (manual_control_cw_pulse_input_ready && (PIN_STEP_CLOCKWISE == ILL_STEP_PIN_ACTIVE)) {
 	manual_control_cw_pulse_input_ready = 0;
-	if (afc_motor.target_position >= (afc_motor.max_position - 1)) {
-	  afc_motor.target_position = afc_motor.max_position;
-	} else {
-	  afc_motor.target_position = afc_motor.target_position + 1;
-	}
-	__delay32(30000); // Delay 30K Clock Cycles so that bounces on the step signal will not cause multiple motor steps
+	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, 1);
       }
     
+      // Change state if needed
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
@@ -174,6 +175,7 @@ void DoStateMachine(void) {
       }  
     }
     break;
+
     /*
   case STATE_SOFTWARE_CONTROL:
     while (control_state == STATE_SOFTWARE_CONTROL) {
@@ -187,30 +189,43 @@ void DoStateMachine(void) {
     }
     break;
     */
-  case STATE_AFC_START_UP:
-    while (control_state == STATE_AFC_START_UP) {
-      DoSerialCommand();
+
+  case STATE_AFC_PULSING:
+    while (control_state == STATE_AFC_PULSING) {
       ClrWdt();
-      if (trigger_complete) {
-	trigger_complete = 1;
-	FilterFrequencyError();
+      DoSerialCommand();
+      if (afc_data.trigger_complete) {
+	afc_data.time_off_100ms_units = 0;
+	afc_data.trigger_complete = 0;
+	DoAFC();
       }
-      if (cooldown_timer > }
-      //SetMotorTarget(&afc_motor, home_position);
+      
+      // Look for change of state
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (PIN_MODE_SELECT != ILL_AFC_MODE) {
 	control_state = STATE_RESET;
+      } else if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
+	control_state = STATE_AFC_NOT_PULSING;
       } 
     }
     break;
 
-  case STATE_AFC_STEADY_STATE:
-    control_state = STATE_RESET;
-    break;
-    
   case STATE_AFC_NOT_PULSING:
-    control_state = STATE_RESET;
+    
+    while (control_state == STATE_AFC_NOT_PULSING) {
+      ClrWdt();
+      DoSerialCommand();
+
+      // Look for change of state
+      if (FaultCheck()) {
+	control_state = STATE_FAULT;
+      } else if (PIN_MODE_SELECT != ILL_AFC_MODE) {
+	control_state = STATE_RESET;
+      } else if (afc_data.trigger_complete) {
+	control_state = STATE_AFC_PULSING;
+      } 
+    }
     break;
 
 
@@ -262,30 +277,30 @@ void InitPeripherals(void){
   _INT2EP = 1; 	        // Interrupt on falling edge
   _INT2IP = 6;		// Set interrupt to second highest priority
 	
-  // DPARKER what are these for
-  /*
-  _T2IP = 4;
-  _T3IP = 2;
-  */
 
   // Configure T2 Interrupt.  This is used to time motor steps
   _T2IF = 0;
   _T2IE = 1;
   _T2IP = 3;
 
+  // Configure T1 Interrupt.  This is used for general purpose timing
+  _T1IF = 0;
+  _T1IE = 1;
+  _T1IP = 3;
+
   
   // PWM Special event trigger
   _PSEMIF = 0;
   _PSEMIE = 1;
-  _PSEMIP = 4;
+  _PSEMIP = 5;
 
 
   // Configure UART Interrupts
   _U1RXIE = 0; // Disable RX Interrupt
-  _U1RXIP = 5; // Priority Level 3
+  _U1RXIP = 4; // Priority Level 3
   
   _U1TXIE = 0; // Disable TX Interrupt
-  _U1RXIP = 5; // Priority Level 3
+  _U1RXIP = 4; // Priority Level 3
 
 
 
@@ -296,9 +311,17 @@ void InitPeripherals(void){
 #define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
 #define T2_CONFIG_VALUE           0b1000000000110000   // Timer On and 256 Prescale
 
+
+#define T1_PERIOD_VALUE           (unsigned int)(FCY/8/100)
+#define T1_CONFIG_VALUE           0b1000000000010000   // Timer On and 8 Prescale
   
+  PR1 = T1_PERIOD_VALUE;  
+  T1CON = T1_CONFIG_VALUE;
+  
+  
+  PR2 = T2_PERIOD_VALUE;  
   T2CON = T2_CONFIG_VALUE;
-  PR2 = T2_PERIOD_VALUE;
+
   
   /* 
      --- UART 1 setup ---
@@ -379,12 +402,26 @@ void InitPeripherals(void){
 }    
  
  
-void FilterFrequencyError(void) {
-  signed int error;
+#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE     64
+#define FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS      4000
+#define FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS      3000
+#define FREQUENCY_ERROR_FAST_MOVE_UP_2_STEPS      2000
+#define FREQUENCY_ERROR_FAST_MOVE_UP_1_STEPS      1000
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_1_STEPS    -1000
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_2_STEPS    -2000
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS    -3000
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS    -4000
 
+#define FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE    500
+#define FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE    -500
+
+void DoAFC(void) {
+  signed int error;
+  unsigned int new_target_position;
   // Sigma/delta data is 10 bit unsigned so we should have no problem with the conversion to signed and overflow even with the frequency error offset.
+  new_target_position = afc_motor.current_position;
   error = afc_data.sigma_data - afc_data.delta_data;
-  error += frequency_error_offset;
+  error += afc_data.frequency_error_offset;
   afc_data.data_pointer++;
   afc_data.data_pointer &= 0x1F;
   afc_data.frequency_error_history[afc_data.data_pointer] = error;
@@ -399,25 +436,41 @@ void FilterFrequencyError(void) {
       We need to react to the incoming data from AFC very quickly
       This means less filtering and and high gain integral response - Max 4 Steps per sample
     */
-    afc_data.frequency_error_filtered = FastFilter();
-    if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_4) {
-      
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_3) {
-      
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_2) {
-      
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_1) {
-      
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_0) {
-      // DO NOTHING!!!
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_NEG_1) {
-      
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_NEG_2) {
-      
-    } else if (afc_data.frequency_error_filtered > DPARKER_VALUE_POS_NEG_3) {
-      
+    afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
+    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS) {
+      new_target_position += 4;
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS) {
+      new_target_position += 3;
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_2_STEPS) {
+      new_target_position += 2;
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_1_STEPS) {
+      new_target_position += 1;
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_1_STEPS) {
+      // Do Nothing
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_2_STEPS) {
+      if (new_target_position >= 1) {
+	new_target_position -= 1;
+      } else {
+	new_target_position = 0;
+      }
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS) {
+      if (new_target_position >= 2) {
+	new_target_position -= 2;
+      } else {
+	new_target_position = 0;
+      }
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS) {
+      if (new_target_position >= 3) {
+	new_target_position -= 3;
+      } else {
+	new_target_position = 0;
+      }
     } else {
-      
+      if (new_target_position >= 4) {
+	new_target_position -= 4;
+      } else {
+	new_target_position = 0;
+      }
     }
   } else {    
     /*
@@ -426,10 +479,35 @@ void FilterFrequencyError(void) {
       We can filter/average the incoming data over a longer timeframe
       The gain of the response can be much lower - Max 1 step per 8 samples
     */
-    afc_data.frequency_error_filtered = SlowFilter()
-
+    
+    afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
+    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE) {
+      afc_data.slow_response_error_counter++;
+    } else if (afc_data.frequency_error_filtered < FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE) {
+      afc_data.slow_response_error_counter--;
+    }
+    if (afc_data.slow_response_error_counter >= 8) {
+      afc_data.slow_response_error_counter = 0;
+      new_target_position++;
+    } else if (afc_data.slow_response_error_counter <= -8) {
+      if (new_target_position > 0) {
+	afc_data.slow_response_error_counter = 0;
+	new_target_position--;
+      }
+    }
   }
+  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
 }
+
+
+signed int FrequencyErrorFilterSlowResponse() {
+  return 0;
+}
+
+signed int FrequencyErrorFilterFastResponse() {
+  return 0;
+}
+
 
 
 
@@ -478,55 +556,60 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   afc_data.sigma_data >>= 4;
   afc_data.delta_data >>= 4;
 
-  trigger_complete = 1;
-
-  // save the accumulated data to RAM
-  frequency_error = sigma_data - delta_data;
-  frequency_error_slow_history[frequency_error_slow_history_next_location] = frequency_error;
-  frequency_error_slow_history_next_location++;
-  frequency_error_slow_history_next_location &= 0x0007;
-
-  if (number_of_running_pulses <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
-    frequency_error_fast_history[0] = frequency_error;
-    if (number_of_running_pulses == 1) {
-      // DPARKER run fast filter with n=1 filter data
-      frequency_error_filtered = frequency_error;
-    } else if (number_of_running_pulses == 2) {
-      // DPARKER run fast filter with n=2 filter data
-      frequency_error_filtered = frequency_error;
-    } else if (number_of_running_pulses == 3) {
-      // DPARKER run fast filter with n=3 filter data
-      frequency_error_filtered = frequency_error;
-    } else if (number_of_running_pulses == 4) {
-      // DPARKER run fast filter with n=4 filter data
-      frequency_error_filtered = frequency_error;
-    } else if (number_of_running_pulses == 5) {
-      // DPARKER run fast filter with n=5 filter data
-      frequency_error_filtered = frequency_error;
-    } else if (number_of_running_pulses == 6) {
-      // DPARKER run fast filter with n=6 filter data
-      frequency_error_filtered = frequency_error;
-    } else if (number_of_running_pulses == 7) {
-      // DPARKER run fast filter with n=7 filter data
-      frequency_error_filtered = frequency_error;
-    } else {
-      // DPARKER run fast filter with n=8 filter data
-      frequency_error_filtered = frequency_error;
-    }
-    // DPARKER run modified PID based upon the current motor position and the filtered sigma & delta data
-  } else {
-    // DPARKER Average data in 128 value buffer and use that
-    frequency_error_filtered = frequency_error;
-    
-    // DPARKER use that averaged data to feed into the "slow" PID
-    // We are in steady state operation.  Need to move the motor much slower
-
-  }
+  afc_data.trigger_complete = 1;
 
   prf_counter++;
-  
-
 }
+
+
+// This is set up for .1 Second Timer
+void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
+
+  _T1IF = 0;
+
+  // Update the feedback to the control board.
+  /*
+    Based on the value of the spare analog input (adc_parameter_input) we return different data on the DAC
+    
+    adc_parameter_input = 0,  0,      0     -> 6553   = Return Motor Position        (voltage scaling = ???)
+    adc_parameter_input = 1V, 13107,  6554  -> 13107  = Return Simga Reading         (voltage scaling = ???)
+    adc_parameter_input = 2V, 26214,  13108 -> 32767  = Return Delta Reading
+    adc_parameter_input = 3V, 39321,  32768 -> 45874  = Return Pulse Rate Reading    (voltage scaling = ???)
+    adc_parameter_input = 4V, 53428,  45785 -> 58981  = N/A Returns 0x0000
+    adc_parameter_input = 5V, 65535,  58982 -> 65535  = N/A Returns 0x0000
+  */
+  
+  if (adc_parameter_input <= 6553) {
+    U24_MCP4725.data_12_bit = (afc_motor.current_position << 2);
+  } else if (adc_parameter_input <= 13107) {
+    U24_MCP4725.data_12_bit = 0x0000; 
+  } else if (adc_parameter_input <= 32767) {
+    U24_MCP4725.data_12_bit = 0x0000;
+  } else if (adc_parameter_input <= 45874) {
+    U24_MCP4725.data_12_bit = (pulse_frequency << 2);
+  } else if (adc_parameter_input <= 58981) {
+    U24_MCP4725.data_12_bit = 0x0000;
+  } else {
+    U24_MCP4725.data_12_bit = 0x0000;
+  }
+
+  MCP4725UpdateFast(&U24_MCP4725);
+
+
+  // Calculate PRF
+  four_second_counter++;
+  if (four_second_counter >= 40) {
+    four_second_counter = 0;
+    pulse_frequency = (prf_counter *10) >> 2;
+    prf_counter = 0;
+  }
+
+  // Update the not pulsing counter
+  afc_data.time_off_100ms_units++;
+}
+
+
+
 
 
 // DPARKER THIS FUNCTION FOR DEBUGGING ONLY

@@ -2,7 +2,7 @@
 #include "Stepper.h"
 #include "Tables.h"
 #include "Main.h"
-#include "MCP4725.h"
+
 
 // Global Variables
 unsigned int motor_motion;
@@ -30,9 +30,6 @@ unsigned int adc_parameter_input;
 unsigned int adc_motor_current_a;
 unsigned int adc_motor_current_b;
 
-
-unsigned int pulse_frequency;
-unsigned int four_second_counter = 0;
 
 #define PWM_PWMCON_VALUE        0b0000000000000000
 /* 
@@ -197,9 +194,7 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
   adc_motor_current_b_accumulator += ADCBUF3;
   _SWTRG1 = 1;  // Trigger conversion on motor currents
   _SWTRG5 = 1;  // Trigger conversion on parameter input
-
-
-
+  
   
   if (motor_motion != MOTOR_MOTION_STOPPED) {
     motor_stopped_counter = 0;
@@ -274,7 +269,6 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
 * Note:			None
 *******************************************************************************/
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
-  unsigned int data_word;
   _T2IF = 0;
 
   // Update the motor position
@@ -291,43 +285,7 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
       motor_motion = MOTOR_MOTION_CLOCKWISE;
     } 
   }
-
-  // Update the feedback to the control board.
-  /*
-    Based on the value of the spare analog input (adc_parameter_input) we return different data on the DAC
-    
-    adc_parameter_input = 0,  0,      0     -> 6553   = Return Motor Position        (voltage scaling = ???)
-    adc_parameter_input = 1V, 13107,  6554  -> 13107  = Return Simga Reading         (voltage scaling = ???)
-    adc_parameter_input = 2V, 26214,  13108 -> 32767  = Return Delta Reading
-    adc_parameter_input = 3V, 39321,  32768 -> 45874  = Return Pulse Rate Reading    (voltage scaling = ???)
-    adc_parameter_input = 4V, 53428,  45785 -> 58981  = N/A Returns 0x0000
-    adc_parameter_input = 5V, 65535,  58982 -> 65535  = N/A Returns 0x0000
-  */
   
-  if (adc_parameter_input <= 6553) {
-    data_word = (afc_motor.current_position << 2);
-  } else if (adc_parameter_input <= 13107) {
-    data_word = 0x0000; 
-  } else if (adc_parameter_input <= 32767) {
-    data_word = 0x0000;
-  } else if (adc_parameter_input <= 45874) {
-    data_word = (pulse_frequency << 2);
-  } else if (adc_parameter_input <= 58981) {
-    data_word = 0x0000;
-  } else {
-    data_word = 0x0000;
-  }
-  
-  U24_MCP4725.data_12_bit = data_word;
-  MCP4725UpdateFast(&U24_MCP4725);
-  
-  
-  four_second_counter++;
-  if (four_second_counter >= (STEPS_PER_SECOND<<2)) {
-    four_second_counter = 0;
-    pulse_frequency = (prf_counter *10) >> 2;
-    prf_counter = 0;
-  }
 }
 
 
