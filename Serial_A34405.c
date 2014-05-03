@@ -242,6 +242,15 @@ unsigned int ReadFromRam(unsigned int ram_location) {
     case RAM_READ_FREQUENCY_ERROR_FILTERED:
       data_return = afc_data.frequency_error_filtered;
       break;
+      
+    case RAM_READ_FREQUENCY_ERROR_OFFSET:
+      data_return = afc_data.frequency_error_offset;
+      break;
+
+    case RAM_READ_PRF:
+      data_return = pulse_frequency;
+      break;
+
 
     }  
   

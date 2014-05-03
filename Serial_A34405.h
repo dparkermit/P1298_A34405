@@ -37,9 +37,10 @@
 #define RAM_READ_SIGMA_DATA                             0x40
 #define RAM_READ_DELTA_DATA                             0x41
 #define RAM_READ_FREQUENCY_ERROR_FILTERED               0x42
+#define RAM_READ_FREQUENCY_ERROR_OFFSET                 0x43
 
 
-
+#define RAM_READ_PRF                                    0x50
 
 
 

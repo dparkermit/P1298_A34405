@@ -131,6 +131,7 @@ void DoStateMachine(void) {
   case STATE_RESET:
     afc_motor.min_position = MOTOR_MINIMUM_POSITION;
     afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
+    afc_data.frequency_error_offset = -10;  // DPARKER ADDED FOR TESTING - REMOVE
     ClrWdt();
     ResetAllFaults();
     DoSerialCommand();
@@ -195,7 +196,6 @@ void DoStateMachine(void) {
       ClrWdt();
       DoSerialCommand();
       if (afc_data.trigger_complete) {
-	afc_data.time_off_100ms_units = 0;
 	afc_data.trigger_complete = 0;
 	DoAFC();
       }
@@ -412,8 +412,8 @@ void InitPeripherals(void){
 #define FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS    -3000
 #define FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS    -4000
 
-#define FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE    500
-#define FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE    -500
+#define FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE    35
+#define FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE    -35
 
 void DoAFC(void) {
   signed int error;
@@ -422,9 +422,9 @@ void DoAFC(void) {
   new_target_position = afc_motor.current_position;
   error = afc_data.sigma_data - afc_data.delta_data;
   error += afc_data.frequency_error_offset;
-  afc_data.data_pointer++;
-  afc_data.data_pointer &= 0x1F;
   afc_data.frequency_error_history[afc_data.data_pointer] = error;
+  afc_data.data_pointer++;
+  afc_data.data_pointer &= 0x0F;
   afc_data.pulses_on++;
   if (afc_data.pulses_on > 0xFF00) {
     afc_data.pulses_on = 0xFF00;
@@ -501,11 +501,53 @@ void DoAFC(void) {
 
 
 signed int FrequencyErrorFilterSlowResponse() {
-  return 0;
+  signed int average;
+  // For now, just average the data
+  average = afc_data.frequency_error_history[0];
+  average += afc_data.frequency_error_history[1];
+  average += afc_data.frequency_error_history[2];
+  average += afc_data.frequency_error_history[3];
+  average += afc_data.frequency_error_history[4];
+  average += afc_data.frequency_error_history[5];
+  average += afc_data.frequency_error_history[6];
+  average += afc_data.frequency_error_history[7];
+  average += afc_data.frequency_error_history[8];
+  average += afc_data.frequency_error_history[9];
+  average += afc_data.frequency_error_history[10];
+  average += afc_data.frequency_error_history[11];
+  average += afc_data.frequency_error_history[12];
+  average += afc_data.frequency_error_history[13];
+  average += afc_data.frequency_error_history[14];
+  average += afc_data.frequency_error_history[15];
+  
+  average >>= 4; 
+
+  return average;
 }
 
 signed int FrequencyErrorFilterFastResponse() {
-  return 0;
+  signed int average;
+  // For now, just average the data
+  average = afc_data.frequency_error_history[0];
+  average += afc_data.frequency_error_history[1];
+  average += afc_data.frequency_error_history[2];
+  average += afc_data.frequency_error_history[3];
+  average += afc_data.frequency_error_history[4];
+  average += afc_data.frequency_error_history[5];
+  average += afc_data.frequency_error_history[6];
+  average += afc_data.frequency_error_history[7];
+  average += afc_data.frequency_error_history[8];
+  average += afc_data.frequency_error_history[9];
+  average += afc_data.frequency_error_history[10];
+  average += afc_data.frequency_error_history[11];
+  average += afc_data.frequency_error_history[12];
+  average += afc_data.frequency_error_history[13];
+  average += afc_data.frequency_error_history[14];
+  average += afc_data.frequency_error_history[15];
+  
+  average >>= 4; 
+
+  return average;
 }
 
 
@@ -556,8 +598,7 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   afc_data.sigma_data >>= 4;
   afc_data.delta_data >>= 4;
 
-  afc_data.trigger_complete = 1;
-
+  afc_data.time_off_100ms_units = 0;
   prf_counter++;
 }
 
