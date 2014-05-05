@@ -71,9 +71,9 @@ extern unsigned int prf_counter;
 typedef struct {
   unsigned int sigma_data;
   unsigned int delta_data;
-  signed int frequency_error_filtered;
-  signed int frequency_error_history[16];
-  signed int frequency_error_offset;
+  signed char frequency_error_filtered;
+  signed char frequency_error_history[16];
+  signed char frequency_error_offset;
   unsigned char data_pointer; 
   unsigned char trigger_complete;
   signed char slow_response_error_counter;

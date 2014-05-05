@@ -68,8 +68,8 @@ void ResetAllFaults(void);
 void ResetAllFaults(void) {
 }
 
-signed int FrequencyErrorFilterSlowResponse();
-signed int FrequencyErrorFilterFastResponse();
+signed char FrequencyErrorFilterSlowResponse();
+signed char FrequencyErrorFilterFastResponse();
 
 
 void FilterFrequencyErrorData(void);
@@ -480,19 +480,22 @@ void DoAFC(void) {
       The gain of the response can be much lower - Max 1 step per 8 samples
     */
     
-    afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
     if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE) {
       afc_data.slow_response_error_counter++;
     } else if (afc_data.frequency_error_filtered < FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE) {
       afc_data.slow_response_error_counter--;
     }
-    if (afc_data.slow_response_error_counter >= 8) {
+    if (afc_data.slow_response_error_counter >= 8) {  //DPARKER usre #define value instead of "8" here and below
       afc_data.slow_response_error_counter = 0;
-      new_target_position++;
+      if (new_target_position <= 0xFFFE) {
+	new_target_position++;
+      }
     } else if (afc_data.slow_response_error_counter <= -8) {
       if (new_target_position > 0) {
 	afc_data.slow_response_error_counter = 0;
-	new_target_position--;
+	if (new_target_position >= 1) {
+	  new_target_position--;
+	}
       }
     }
   }
@@ -510,7 +513,7 @@ void FilterFrequencyErrorData(void) {
 
 
 
-signed int FrequencyErrorFilterSlowResponse() {
+signed char FrequencyErrorFilterSlowResponse() {
   signed int average;
   // For now, just average the data
   average = afc_data.frequency_error_history[0];
@@ -535,7 +538,7 @@ signed int FrequencyErrorFilterSlowResponse() {
   return average;
 }
 
-signed int FrequencyErrorFilterFastResponse() {
+signed char FrequencyErrorFilterFastResponse() {
   signed int average;
   // For now, just average the data
   average = afc_data.frequency_error_history[0];
@@ -618,6 +621,11 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
 
   error = afc_data.sigma_data - afc_data.delta_data;
   error += afc_data.frequency_error_offset;
+  if (error > 127) {
+    error = 127;
+  } else if ( error < -128) {
+    error = -128;
+  }
   afc_data.frequency_error_history[afc_data.data_pointer] = error;
   afc_data.data_pointer++;
   afc_data.data_pointer &= 0x0F;
@@ -670,7 +678,7 @@ void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
   four_second_counter++;
   if (four_second_counter >= 40) {
     four_second_counter = 0;
-    pulse_frequency = (prf_counter *10) >> 2;
+    pulse_frequency = (prf_counter >> 2);
     prf_counter = 0;
   }
 
