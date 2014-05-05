@@ -72,6 +72,7 @@ signed int FrequencyErrorFilterSlowResponse();
 signed int FrequencyErrorFilterFastResponse();
 
 
+void FilterFrequencyErrorData(void);
 
 
 int main (void) {
@@ -131,7 +132,7 @@ void DoStateMachine(void) {
   case STATE_RESET:
     afc_motor.min_position = MOTOR_MINIMUM_POSITION;
     afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
-    afc_data.frequency_error_offset = -10;  // DPARKER ADDED FOR TESTING - REMOVE
+    afc_data.frequency_error_offset = 0;  
     ClrWdt();
     ResetAllFaults();
     DoSerialCommand();
@@ -149,6 +150,11 @@ void DoStateMachine(void) {
     while (control_state == STATE_MANUAL_MODE) {
       ClrWdt();
       DoSerialCommand();
+      
+      if (afc_data.trigger_complete) {
+	afc_data.trigger_complete = 0;
+	FilterFrequencyErrorData();
+      }
 
       // Look for a pulse on the counter clockwise pin
       if (PIN_STEP_COUNTER_CLOCKWISE != ILL_STEP_PIN_ACTIVE) {
@@ -167,6 +173,8 @@ void DoStateMachine(void) {
 	manual_control_cw_pulse_input_ready = 0;
 	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, 1);
       }
+
+      
     
       // Change state if needed
       if (FaultCheck()) {
@@ -192,11 +200,13 @@ void DoStateMachine(void) {
     */
 
   case STATE_AFC_PULSING:
+    afc_data.pulses_on = 0;
     while (control_state == STATE_AFC_PULSING) {
       ClrWdt();
       DoSerialCommand();
       if (afc_data.trigger_complete) {
 	afc_data.trigger_complete = 0;
+	FilterFrequencyErrorData();
 	DoAFC();
       }
       
@@ -212,11 +222,10 @@ void DoStateMachine(void) {
     break;
 
   case STATE_AFC_NOT_PULSING:
-    
     while (control_state == STATE_AFC_NOT_PULSING) {
       ClrWdt();
       DoSerialCommand();
-
+      
       // Look for change of state
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -402,33 +411,25 @@ void InitPeripherals(void){
 }    
  
  
-#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE     64
-#define FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS      4000
-#define FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS      3000
-#define FREQUENCY_ERROR_FAST_MOVE_UP_2_STEPS      2000
-#define FREQUENCY_ERROR_FAST_MOVE_UP_1_STEPS      1000
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_1_STEPS    -1000
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_2_STEPS    -2000
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS    -3000
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS    -4000
+#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE     32
 
-#define FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE    35
-#define FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE    -35
+#define FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS      64
+#define FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS      48
+#define FREQUENCY_ERROR_FAST_MOVE_UP_2_STEPS      32
+#define FREQUENCY_ERROR_FAST_MOVE_UP_1_STEPS      16
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_1_STEPS    -16
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_2_STEPS    -32
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS    -48
+#define FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS    -64
+
+#define FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE    16
+#define FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE    -16
+
 
 void DoAFC(void) {
-  signed int error;
   unsigned int new_target_position;
   // Sigma/delta data is 10 bit unsigned so we should have no problem with the conversion to signed and overflow even with the frequency error offset.
   new_target_position = afc_motor.current_position;
-  error = afc_data.sigma_data - afc_data.delta_data;
-  error += afc_data.frequency_error_offset;
-  afc_data.frequency_error_history[afc_data.data_pointer] = error;
-  afc_data.data_pointer++;
-  afc_data.data_pointer &= 0x0F;
-  afc_data.pulses_on++;
-  if (afc_data.pulses_on > 0xFF00) {
-    afc_data.pulses_on = 0xFF00;
-  }
   if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
     /*
       The magnetron has just turned on after being off for a period of time.
@@ -436,7 +437,6 @@ void DoAFC(void) {
       We need to react to the incoming data from AFC very quickly
       This means less filtering and and high gain integral response - Max 4 Steps per sample
     */
-    afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
     if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS) {
       new_target_position += 4;
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS) {
@@ -500,6 +500,16 @@ void DoAFC(void) {
 }
 
 
+void FilterFrequencyErrorData(void) {
+  if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+    afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
+  } else {
+    afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
+  }
+}
+
+
+
 signed int FrequencyErrorFilterSlowResponse() {
   signed int average;
   // For now, just average the data
@@ -558,17 +568,25 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
      This is the signal that pulse has been sent to the linac
      Need to trigger the sample and hold after correct delay and schedule the ADC to read those sampled values.
   */ 
-  
+  signed int error;  
   unsigned int n;
   
-  _INT0IF = 0;
   
   // DPARKER DELAY UNTILL WE HAVE A GOOD SIGNAL ON SIGMA/DELTA
-  __delay32(99); // 3uS
+  //__delay32(12); // 3uS
   
   PIN_SAMPLE_TRIGGER = OLL_TRIGGER_SH;
-  __delay32(20);
-
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
+  Nop();
   // DPARKER DELAY SAMPLE TIME - At least 300ns, but longer would be better
 
   PIN_SAMPLE_TRIGGER = !OLL_TRIGGER_SH;
@@ -598,8 +616,19 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   afc_data.sigma_data >>= 4;
   afc_data.delta_data >>= 4;
 
+  error = afc_data.sigma_data - afc_data.delta_data;
+  error += afc_data.frequency_error_offset;
+  afc_data.frequency_error_history[afc_data.data_pointer] = error;
+  afc_data.data_pointer++;
+  afc_data.data_pointer &= 0x0F;
+  afc_data.pulses_on++;
+  if (afc_data.pulses_on > 0xFF00) {
+    afc_data.pulses_on = 0xFF00;
+  }
   afc_data.time_off_100ms_units = 0;
   prf_counter++;
+  afc_data.trigger_complete = 1;
+  _INT0IF = 0;
 }
 
 

@@ -14,7 +14,7 @@
 #define CMD_OVERCURRENT_SHUTDOWN_TEST                   0xE0
 #define CMD_READ_AFC_ERROR_DATA_HISTORY                 0x50
 #define CMD_READ_MEM_LOCATION                           0x54
-
+#define CMD_SET_ERROR_OFFSET                            0x60
 
 
 

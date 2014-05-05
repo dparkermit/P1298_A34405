@@ -173,6 +173,10 @@ void ExecuteCommand(void) {
       //return_data_word = &data_word; // DPARKER will this work???
       break;
 
+    case CMD_SET_ERROR_OFFSET:
+      afc_data.frequency_error_offset = data_word;
+      break;
+
     case CMD_OVERCURRENT_SHUTDOWN_TEST:
       IOCON1 = 0b0000001100000000;
       IOCON2 = 0b0000001100000000;
