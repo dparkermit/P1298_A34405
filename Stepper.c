@@ -19,12 +19,13 @@ unsigned int counterTablePWM;
 unsigned int counterPWM;
 unsigned int motor_stopped_counter; 
 
-unsigned int motor_slowdown;
+unsigned char motor_slowdown;
 
-unsigned int adc_average_counter;
+unsigned char adc_average_counter;
 unsigned int adc_parameter_input_accumulator;
 unsigned int adc_motor_current_a_accumulator;
 unsigned int adc_motor_current_b_accumulator;
+unsigned int adc_home_position_accumulator;
 
 unsigned int adc_parameter_input;
 unsigned int adc_motor_current_a;
@@ -185,16 +186,19 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
     adc_parameter_input = adc_parameter_input_accumulator;
     adc_motor_current_a = adc_motor_current_a_accumulator;
     adc_motor_current_b = adc_motor_current_b_accumulator;
+    afc_motor.home_position = adc_home_position_accumulator >> 5;
     adc_parameter_input_accumulator = 0;
     adc_motor_current_a_accumulator = 0;
     adc_motor_current_b_accumulator = 0;
+    adc_home_position_accumulator = 0;
   }
+  adc_home_position_accumulator += ADCBUF9;
   adc_parameter_input_accumulator += ADCBUF11;
   adc_motor_current_a_accumulator += ADCBUF2;
   adc_motor_current_b_accumulator += ADCBUF3;
   _SWTRG1 = 1;  // Trigger conversion on motor currents
   _SWTRG5 = 1;  // Trigger conversion on parameter input
-  
+  _SWTRG4 = 1;  // Trigger conversion on Home input
   
   if (motor_motion != MOTOR_MOTION_STOPPED) {
     motor_stopped_counter = 0;

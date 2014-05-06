@@ -174,7 +174,13 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_SET_ERROR_OFFSET:
-      afc_data.frequency_error_offset = data_word;
+      if (data_word <= 127) {
+	afc_data.frequency_error_offset = data_word;
+      } else {
+	data_word += 128;
+	afc_data.frequency_error_offset = 0;
+	afc_data.frequency_error_offset -= data_word;
+      }
       break;
 
     case CMD_OVERCURRENT_SHUTDOWN_TEST:
@@ -213,6 +219,18 @@ unsigned int ReadFromRam(unsigned int ram_location) {
       
     case RAM_READ_TARGET_POSITION:
       data_return = afc_motor.target_position;
+      break;
+
+    case RAM_READ_HOME_POSITION:
+      data_return = afc_motor.home_position;
+      break;
+
+    case RAM_READ_MAX_POSITION:
+      data_return = afc_motor.max_position;
+      break;
+
+    case RAM_READ_MIN_POSITION:
+      data_return = afc_motor.min_position;
       break;
 
     case RAM_READ_ADCBUF0:

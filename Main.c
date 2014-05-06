@@ -17,6 +17,13 @@ _FGS(CODE_PROT_OFF);                                    /* Disable Code Protecti
 _FWDT(FWDTEN_ON & WDTPOST_PS2048 & WDTPRE_PR32);        /* Enable Watch Dog */ // DPARKER CALCULATE WDT TIMEOUT
 _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
 
+/*
+_prog_addressT EE_address_ps_magnet_config_in_EEPROM;
+unsigned int _EEDATA(32) ps_magnet_config_in_EEPROM[] = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};  // Create 16 word structure in EEPROM and load default configuration values
+signed int ps_magnet_config_ram_copy[16];
+*/
+
+
 
 /* 
    Resource Usage
@@ -58,6 +65,23 @@ void DoStateMachine(void);
 
 void InitPeripherals(void);
 
+void ResetI2C(void);
+
+void ResetI2C(void) {
+  unsigned char n;
+  _I2CEN = 0; // turn off I2C module
+  _TRISG2 = 0; // Set I2C Clock Pin to output
+  n=0;
+  while (n++ <= 20) {
+    _LATG2 = 1 ;
+    __delay32(100);
+    _LATG2 = 0 ; 
+    __delay32(100);
+  }
+  _TRISG2 = 1; // Set I2C Clock Pin to input
+  _I2CEN = 1; // turn on I2C module
+}
+
 
 unsigned int FaultCheck(void);
 unsigned int FaultCheck(void) {
@@ -79,6 +103,13 @@ int main (void) {
   while(OSCCONbits.LOCK!=1);          /* Wait for PLL to lock */
   //__delay32(EEPROM_DELAY*10);         /* Wait for EEPROMs to settle */
   __delay32(30000000);
+  
+  /*
+  _init_prog_address(EE_address_ps_magnet_config_in_EEPROM, ps_magnet_config_in_EEPROM);
+  _memcpy_p2d16(ps_magnet_config_ram_copy, EE_address_ps_magnet_config_in_EEPROM, _EE_ROW);
+  ClrWdt();
+  */
+
   control_state = STATE_STARTUP;
   
   while(1) {
@@ -102,8 +133,12 @@ void DoStateMachine(void) {
   case STATE_MOTOR_ZERO:
     afc_motor.max_position = 800;
     afc_motor.min_position = 0;
-    afc_motor.current_position = afc_motor.max_position;
-    afc_motor.target_position = afc_motor.min_position;
+    // DPARKER REMOVED FOR TEST WITH DEVIN
+    //afc_motor.current_position = afc_motor.max_position;
+    //afc_motor.target_position = afc_motor.min_position;
+    afc_motor.current_position = 600;
+    afc_motor.target_position = 600;
+    
     while (control_state == STATE_MOTOR_ZERO) {
       DoSerialCommand();
       ClrWdt();
@@ -116,8 +151,9 @@ void DoStateMachine(void) {
     break;
 
   case STATE_MOTOR_STARTUP_HOME:
-    afc_motor.current_position = 0;
-    afc_motor.target_position = afc_motor.home_position;
+    // DPARKER removed for test with devin
+    //afc_motor.current_position = 0;
+    //afc_motor.target_position = afc_motor.home_position;
     while (control_state == STATE_MOTOR_STARTUP_HOME) {
       ClrWdt();  
       DoSerialCommand();
@@ -321,8 +357,8 @@ void InitPeripherals(void){
 #define T2_CONFIG_VALUE           0b1000000000110000   // Timer On and 256 Prescale
 
 
-#define T1_PERIOD_VALUE           (unsigned int)(FCY/8/100)
-#define T1_CONFIG_VALUE           0b1000000000010000   // Timer On and 8 Prescale
+#define T1_PERIOD_VALUE           (unsigned int)(FCY/256/10)
+#define T1_CONFIG_VALUE           0b1000000000110000   // Timer On and 8 Prescale
   
   PR1 = T1_PERIOD_VALUE;  
   T1CON = T1_CONFIG_VALUE;
@@ -383,11 +419,11 @@ void InitPeripherals(void){
   //#define ADCON_DEFAULT     0b1000000000100101 
 #define ADCON_DEFAULT (ADC_MOD_DIS | ADC_IDLE_CONT | ADC_SOFT_TRIG_DIS | ADC_DATA_INT | ADC_INT_EN_2CONV | ADC_ORDER_EVEN_FST | ADC_SAMP_SEQ | ADC_PLL_EN_FADC_14)
   
-#define ADPCFG_DEFAULT    0b1111011111110000  // AN0,AN1,AN2,AN3,AN11
+#define ADPCFG_DEFAULT    0b1111010111110000  // AN0,AN1,AN2,AN3,AN9,AN11
     
 #define ADCPC0_DEFAULT (ADC_AN1_0_IR_GEN_DIS | ADC_AN1_0_TRIG_INDV_SW |  ADC_AN3_2_IR_GEN_DIS   | ADC_AN3_2_TRIG_INDV_SW)
 #define ADCPC1_DEFAULT (ADC_AN5_4_IR_GEN_DIS | ADC_AN5_4_NOCONV       |  ADC_AN7_6_IR_GEN_DIS   | ADC_AN7_6_NOCONV)
-#define ADCPC2_DEFAULT (ADC_AN9_8_IR_GEN_DIS | ADC_AN9_8_NOCONV       |  ADC_AN11_10_IR_GEN_DIS | ADC_AN11_10_TRIG_INDV_SW)
+#define ADCPC2_DEFAULT (ADC_AN9_8_IR_GEN_DIS | ADC_AN9_8_TRIG_INDV_SW |  ADC_AN11_10_IR_GEN_DIS | ADC_AN11_10_TRIG_INDV_SW)
 
   ADSTAT = 0;               // Clear the status register
   ADCON = ADCON_DEFAULT;
@@ -407,7 +443,8 @@ void InitPeripherals(void){
 
   SetupMCP4725(&U24_MCP4725);
   
-  prf_counter = 0;
+  ResetI2C();
+
 }    
  
  
@@ -677,8 +714,9 @@ void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
   // Calculate PRF
   four_second_counter++;
   if (four_second_counter >= 40) {
+    PIN_FAULT_OUT_1 = !PIN_FAULT_OUT_1;
     four_second_counter = 0;
-    pulse_frequency = (prf_counter >> 2);
+    pulse_frequency = prf_counter >> 2;
     prf_counter = 0;
   }
 
