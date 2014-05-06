@@ -6,8 +6,20 @@
 #include "Serial_A34405.h"
 #include "MCP4725.h"
 
+ 
+#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  32
 
-#define LINAC_COOLDOWN_OFF_TIME           30  // 3 seconds
+#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      64
+#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      48
+#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      32
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      16
+
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         16
+#define FREQUENCY_ERROR_SLOW_ERROR_COUNT       8
+
+
+
+#define LINAC_COOLDOWN_OFF_TIME                30  // 3 seconds
 
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
 _FICD(ICS_PGD);                                         /* Enable Primary ICP pins */
@@ -133,27 +145,23 @@ void DoStateMachine(void) {
   case STATE_MOTOR_ZERO:
     afc_motor.max_position = 800;
     afc_motor.min_position = 0;
-    // DPARKER REMOVED FOR TEST WITH DEVIN
-    //afc_motor.current_position = afc_motor.max_position;
-    //afc_motor.target_position = afc_motor.min_position;
-    afc_motor.current_position = 600;
-    afc_motor.target_position = 600;
+    afc_motor.current_position = afc_motor.max_position;
+    afc_motor.target_position = afc_motor.min_position;
     
     while (control_state == STATE_MOTOR_ZERO) {
       DoSerialCommand();
       ClrWdt();
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
-      } else if (afc_motor.current_position == afc_motor.min_position) {
+      } else if (afc_motor.current_position == afc_motor.target_position) {
 	control_state = STATE_MOTOR_STARTUP_HOME;
       }
     }
     break;
 
   case STATE_MOTOR_STARTUP_HOME:
-    // DPARKER removed for test with devin
-    //afc_motor.current_position = 0;
-    //afc_motor.target_position = afc_motor.home_position;
+    afc_motor.current_position = 0;
+    afc_motor.target_position = afc_motor.home_position;
     while (control_state == STATE_MOTOR_STARTUP_HOME) {
       ClrWdt();  
       DoSerialCommand();
@@ -447,20 +455,6 @@ void InitPeripherals(void){
 
 }    
  
- 
-#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE     32
-
-#define FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS      64
-#define FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS      48
-#define FREQUENCY_ERROR_FAST_MOVE_UP_2_STEPS      32
-#define FREQUENCY_ERROR_FAST_MOVE_UP_1_STEPS      16
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_1_STEPS    -16
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_2_STEPS    -32
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS    -48
-#define FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS    -64
-
-#define FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE    16
-#define FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE    -16
 
 
 void DoAFC(void) {
@@ -474,29 +468,29 @@ void DoAFC(void) {
       We need to react to the incoming data from AFC very quickly
       This means less filtering and and high gain integral response - Max 4 Steps per sample
     */
-    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_4_STEPS) {
+    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_4_STEPS) {
       new_target_position += 4;
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_3_STEPS) {
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_3_STEPS) {
       new_target_position += 3;
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_2_STEPS) {
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_2_STEPS) {
       new_target_position += 2;
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_UP_1_STEPS) {
+    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
       new_target_position += 1;
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_1_STEPS) {
+    } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
       // Do Nothing
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_2_STEPS) {
+    } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_2_STEPS) {
       if (new_target_position >= 1) {
 	new_target_position -= 1;
       } else {
 	new_target_position = 0;
       }
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_3_STEPS) {
+    } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_3_STEPS) {
       if (new_target_position >= 2) {
 	new_target_position -= 2;
       } else {
 	new_target_position = 0;
       }
-    } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_DOWN_4_STEPS) {
+    } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_4_STEPS) {
       if (new_target_position >= 3) {
 	new_target_position -= 3;
       } else {
@@ -517,17 +511,17 @@ void DoAFC(void) {
       The gain of the response can be much lower - Max 1 step per 8 samples
     */
     
-    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_MINIMUM_POSITIVE_VALUE) {
+    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
       afc_data.slow_response_error_counter++;
-    } else if (afc_data.frequency_error_filtered < FREQUENCY_ERROR_MINIMUM_NEGATIVE_VALUE) {
+    } else if (afc_data.frequency_error_filtered < -FREQUENCY_ERROR_SLOW_THRESHOLD) {
       afc_data.slow_response_error_counter--;
     }
-    if (afc_data.slow_response_error_counter >= 8) {  //DPARKER usre #define value instead of "8" here and below
+    if (afc_data.slow_response_error_counter >= FREQUENCY_ERROR_SLOW_ERROR_COUNT) {
       afc_data.slow_response_error_counter = 0;
       if (new_target_position <= 0xFFFE) {
 	new_target_position++;
       }
-    } else if (afc_data.slow_response_error_counter <= -8) {
+    } else if (afc_data.slow_response_error_counter <= -FREQUENCY_ERROR_SLOW_ERROR_COUNT) {
       if (new_target_position > 0) {
 	afc_data.slow_response_error_counter = 0;
 	if (new_target_position >= 1) {
@@ -552,7 +546,7 @@ void FilterFrequencyErrorData(void) {
 
 signed char FrequencyErrorFilterSlowResponse() {
   signed int average;
-  // For now, just average the data
+  // Average the previous 16 data points
   average = afc_data.frequency_error_history[0];
   average += afc_data.frequency_error_history[1];
   average += afc_data.frequency_error_history[2];
@@ -577,27 +571,33 @@ signed char FrequencyErrorFilterSlowResponse() {
 
 signed char FrequencyErrorFilterFastResponse() {
   signed int average;
-  // For now, just average the data
-  average = afc_data.frequency_error_history[0];
-  average += afc_data.frequency_error_history[1];
-  average += afc_data.frequency_error_history[2];
-  average += afc_data.frequency_error_history[3];
-  average += afc_data.frequency_error_history[4];
-  average += afc_data.frequency_error_history[5];
-  average += afc_data.frequency_error_history[6];
-  average += afc_data.frequency_error_history[7];
-  average += afc_data.frequency_error_history[8];
-  average += afc_data.frequency_error_history[9];
-  average += afc_data.frequency_error_history[10];
-  average += afc_data.frequency_error_history[11];
-  average += afc_data.frequency_error_history[12];
-  average += afc_data.frequency_error_history[13];
-  average += afc_data.frequency_error_history[14];
-  average += afc_data.frequency_error_history[15];
-  
-  average >>= 4; 
+  unsigned char location;
 
-  return average;
+  if (afc_data.pulses_on < 4) {
+    return 0;
+  } else {
+    
+    location = afc_data.data_pointer;
+    // Remember that data_pointer points to the NEXT place to put data, so most recent data is n-1
+    // If number of pulses is less than 4 do nothing
+    // If number of pulses is greater than 4, Average the prevous 4 data points
+    location--;
+    location &= 0x0F;
+    average = afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    
+    average >>= 2; 
+    
+    return average;
+  }
 }
 
 
