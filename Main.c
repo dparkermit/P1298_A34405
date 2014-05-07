@@ -69,6 +69,20 @@ unsigned char manual_control_ccw_pulse_input_ready;
 unsigned char manual_control_cw_pulse_input_ready;
 unsigned char four_second_counter = 0;
 
+#define LINAC_COOLDOWN_FACTIONAL_MULTIPLIER  55000
+
+void DoSystemCooldown(void);
+void DoSystemCooldown(void) {
+  signed long temperature_offset;
+  if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
+    afc_data.time_off_100ms_units = 0;
+    temperature_offset = afc_motor.current_position;
+    temperature_offset -= afc_motor.home_position;
+    temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
+    temperature_offset >>= 16;
+    afc_motor.target_position = afc_motor.home_position + temperature_offset;
+  }
+}
 
 
 void DoAFC(void);
@@ -269,7 +283,7 @@ void DoStateMachine(void) {
     while (control_state == STATE_AFC_NOT_PULSING) {
       ClrWdt();
       DoSerialCommand();
-      
+      DoSystemCooldown();
       // Look for change of state
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -381,7 +395,7 @@ void InitPeripherals(void){
      See uart.h and Microchip documentation for more information about the condfiguration
      
   */
-  #define UART1_BAUDRATE             120000        // U1 Baud Rate
+  #define UART1_BAUDRATE             303000        // U1 Baud Rate
   //#define UART1_BAUDRATE             9600
 #define A35997_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_RX_TX & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_UXRX_IDLE_ONE & UART_BRGH_SIXTEEN & UART_NO_PAR_8BIT & UART_1STOPBIT)
   //#define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)

@@ -174,10 +174,9 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_SET_ERROR_OFFSET:
-      if (data_word <= 127) {
+      if (command_string.register_byte == 0) {
 	afc_data.frequency_error_offset = data_word;
-      } else {
-	data_word += 128;
+      } else if (command_string.register_byte == 1) {
 	afc_data.frequency_error_offset = 0;
 	afc_data.frequency_error_offset -= data_word;
       }
