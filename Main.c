@@ -9,12 +9,12 @@
  
 #define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  32
 
-#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      64
-#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      48
-#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      32
-#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      16
+#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      126
+#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      108
+#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      72
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      36
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         16
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         24
 #define FREQUENCY_ERROR_SLOW_ERROR_COUNT       8
 
 
@@ -76,11 +76,19 @@ void DoSystemCooldown(void) {
   signed long temperature_offset;
   if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
     afc_data.time_off_100ms_units = 0;
-    temperature_offset = afc_motor.current_position;
-    temperature_offset -= afc_motor.home_position;
-    temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
-    temperature_offset >>= 16;
-    afc_motor.target_position = afc_motor.home_position + temperature_offset;
+    if (afc_motor.current_position > afc_motor.home_position) {
+      temperature_offset = afc_motor.current_position;
+      temperature_offset -= afc_motor.home_position;
+      temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
+      temperature_offset >>= 16;
+      afc_motor.target_position = afc_motor.home_position + temperature_offset;
+    } else if (afc_motor.current_position < afc_motor.home_position) {
+      temperature_offset = afc_motor.home_position;
+      temperature_offset -= afc_motor.current_position;
+      temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
+      temperature_offset >>= 16;
+      afc_motor.target_position = afc_motor.home_position - temperature_offset;
+    }
   }
 }
 
@@ -157,7 +165,7 @@ void DoStateMachine(void) {
     break;
 
   case STATE_MOTOR_ZERO:
-    afc_motor.max_position = 800;
+    afc_motor.max_position = 1000;
     afc_motor.min_position = 0;
     afc_motor.current_position = afc_motor.max_position;
     afc_motor.target_position = afc_motor.min_position;
@@ -587,28 +595,21 @@ signed char FrequencyErrorFilterFastResponse() {
   signed int average;
   unsigned char location;
 
-  if (afc_data.pulses_on < 4) {
+  if (afc_data.pulses_on < 2) {
     return 0;
   } else {
     
     location = afc_data.data_pointer;
     // Remember that data_pointer points to the NEXT place to put data, so most recent data is n-1
-    // If number of pulses is less than 4 do nothing
-    // If number of pulses is greater than 4, Average the prevous 4 data points
+    // If number of pulses is less than 2 do nothing
+    // If number of pulses is greater than or equal to 2, Average the prevous 2 data points
     location--;
     location &= 0x0F;
     average = afc_data.frequency_error_history[location];
     location--;
     location &= 0x0F;
     average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    
-    average >>= 2; 
+    average >>= 1; 
     
     return average;
   }

@@ -15,7 +15,7 @@
 #define CMD_READ_AFC_ERROR_DATA_HISTORY                 0x50
 #define CMD_READ_MEM_LOCATION                           0x54
 #define CMD_SET_ERROR_OFFSET                            0x60
-
+#define CMD_SET_HOME_POSITION                           0x36
 
 
 // RAM Locations
@@ -38,7 +38,7 @@
 #define RAM_READ_DELTA_DATA                             0x41
 #define RAM_READ_FREQUENCY_ERROR_FILTERED               0x42
 #define RAM_READ_FREQUENCY_ERROR_OFFSET                 0x43
-
+#define RAM_READ_NUMBER_PULSES_ON                       0x44
 
 #define RAM_READ_PRF                                    0x50
 

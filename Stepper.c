@@ -186,7 +186,7 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
     adc_parameter_input = adc_parameter_input_accumulator;
     adc_motor_current_a = adc_motor_current_a_accumulator;
     adc_motor_current_b = adc_motor_current_b_accumulator;
-    afc_motor.home_position = adc_home_position_accumulator >> 5;
+    //afc_motor.home_position = adc_home_position_accumulator >> 5;  DPARKER - Set HOme position in software for now
     adc_parameter_input_accumulator = 0;
     adc_motor_current_a_accumulator = 0;
     adc_motor_current_b_accumulator = 0;

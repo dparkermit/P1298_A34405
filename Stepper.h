@@ -11,7 +11,7 @@
 
 #define MOTOR_MINIMUM_POSITION      100
 #define MOTOR_MAXIMUM_POSITION      800
-#define MOTOR_DEFAULT_HOME_POSITION 600
+#define MOTOR_DEFAULT_HOME_POSITION 670
 
 #define DEADTIME                (unsigned int)(DEADTIME_NANO_SECONDS/1.07)
 #define PTPER_VALUE             (unsigned int)(FCY*32/MOTOR_PWM_FCY)
