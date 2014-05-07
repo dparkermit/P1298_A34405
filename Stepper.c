@@ -206,9 +206,9 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
     if (motor_slowdown >= MOTOR_SLOWDOWN_FACTOR) {
       motor_slowdown = 0;
       if (motor_motion == MOTOR_MOTION_CLOCKWISE) {
-	  counterTablePWM++;
-	} else {
 	  counterTablePWM--;
+	} else {
+	  counterTablePWM++;
 	}
       counterTablePWM &= 0x007F;
       counterTablePWM_32 = counterTablePWM + 32;
