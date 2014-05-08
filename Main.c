@@ -74,25 +74,6 @@ unsigned char four_second_counter = 0;
 #define LINAC_COOLDOWN_FACTIONAL_MULTIPLIER  55000
 
 void DoSystemCooldown(void);
-void DoSystemCooldown(void) {
-  signed long temperature_offset;
-  if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
-    afc_data.time_off_100ms_units = 0;
-    if (afc_motor.current_position > afc_motor.home_position) {
-      temperature_offset = afc_motor.current_position;
-      temperature_offset -= afc_motor.home_position;
-      temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
-      temperature_offset >>= 16;
-      afc_motor.target_position = afc_motor.home_position + temperature_offset;
-    } else if (afc_motor.current_position < afc_motor.home_position) {
-      temperature_offset = afc_motor.home_position;
-      temperature_offset -= afc_motor.current_position;
-      temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
-      temperature_offset >>= 16;
-      afc_motor.target_position = afc_motor.home_position - temperature_offset;
-    }
-  }
-}
 
 
 void DoAFC(void);
@@ -497,12 +478,37 @@ void InitPeripherals(void){
   software_auto_zero = 0;
   prf_counter = 0;
 }    
- 
-// DPARKER added the following as an alternative AFC startup response
-#define DYNAMIC_FAST_AFC_LENGTH
 
 
+/*
+  This function will run once every LINAC_COOLDOWN_OFF_TIME period
+  When it runs, it compares the current position to the home position
+  It will then move (1 - LINAC_COOLDOWN_FACTIONAL_MULTIPLIER) percent of the way home (minimum of one step)
 
+  // DPARKER it may be nessesary to modify so that the momevement is smoother (and does not have the one step minimum movement) - Especially if we are always working with small step sizes.
+*/ 
+void DoSystemCooldown(void) {
+  signed long temperature_offset;
+  if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
+    afc_data.time_off_100ms_units = 0;
+    if (afc_motor.current_position > afc_motor.home_position) {
+      temperature_offset = afc_motor.current_position;
+      temperature_offset -= afc_motor.home_position;
+      temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
+      temperature_offset >>= 16;
+      afc_motor.target_position = afc_motor.home_position + temperature_offset;
+    } else if (afc_motor.current_position < afc_motor.home_position) {
+      temperature_offset = afc_motor.home_position;
+      temperature_offset -= afc_motor.current_position;
+      temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
+      temperature_offset >>= 16;
+      afc_motor.target_position = afc_motor.home_position - temperature_offset;
+    }
+  }
+}
+
+
+// This function sets all of the data in the Error History array to zero
 void ClearAFCErrorHistory(void) {
   afc_data.frequency_error_history[0] = 0;
   afc_data.frequency_error_history[1] = 0;

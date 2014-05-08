@@ -23,7 +23,7 @@
   Assume an average execution cycle of 1mS and 9 bytes per command.  A command rate of 72 K Baund can be sustained. (57.6 K Baud Standard will work)
   
   Assume an average execution cycle of 500uS and 9 bytes per command, A command rate of 144 K Baud can be sustained (115.2 K Baud Standard should be safe) 
-g
+
 */
 
 void LookForCommand(void);
@@ -37,7 +37,7 @@ struct CommandStringStruct command_string;
 BUFFERBYTE64 uart1_input_buffer;
 BUFFERBYTE64 uart1_output_buffer;
 
-
+unsigned int *ram_pointer;
 
 void DoSerialCommand(void) {
   /* 
@@ -161,9 +161,7 @@ void ExecuteCommand(void) {
       software_auto_zero = 1;
       break;
 
-
     case CMD_READ_EEPROM_REGISTER:
-      
       break;
     
     case CMD_WRITE_EEPROM_REGISTER:
@@ -174,7 +172,13 @@ void ExecuteCommand(void) {
       break;
       
     case CMD_READ_MEM_LOCATION:
-      //return_data_word = &data_word; // DPARKER will this work???
+      if (data_word >= 0x09FF) {
+	data_word = 0x09FF;
+      }
+      data_word &= 0b1111111111111110;
+      ram_pointer = data_word;
+      // NOTE!!!! This will generate a complier warning (as it should for direct memory access)
+      return_data_word = *ram_pointer;
       break;
 
     case CMD_SET_ERROR_OFFSET:
@@ -190,14 +194,13 @@ void ExecuteCommand(void) {
       afc_motor.home_position = data_word;
       break;
 
-
     case CMD_OVERCURRENT_SHUTDOWN_TEST:
       IOCON1 = 0b0000001100000000;
       IOCON2 = 0b0000001100000000;
       IOCON3 = 0b0000001100000000;
       IOCON4 = 0b0000001100000000;  
       break;
-      
+
     }
 
   // Echo the command that was recieved back to the controller
@@ -250,11 +253,11 @@ unsigned int ReadFromRam(unsigned int ram_location) {
       break;
       
     case RAM_READ_ADC_MOTOR_CURRENT_A:
-      data_return = adc_motor_current_a;
+      data_return = afc_motor.adc_motor_current_a;
       break;
 
     case RAM_READ_ADC_MOTOR_CURRENT_B:
-      data_return = adc_motor_current_b;
+      data_return = afc_motor.adc_motor_current_b;
       break;
 
     case RAM_READ_ADC_PARAMETER_INPUT:
