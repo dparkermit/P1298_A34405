@@ -192,6 +192,9 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
     adc_motor_current_b_accumulator = 0;
     adc_home_position_accumulator = 0;
   }
+  _SWTRG1 = 0;  // Trigger conversion on motor currents
+  _SWTRG5 = 0;  // Trigger conversion on parameter input
+  _SWTRG4 = 0;  // Trigger conversion on Home input
   adc_home_position_accumulator += ADCBUF9;
   adc_parameter_input_accumulator += ADCBUF11;
   adc_motor_current_a_accumulator += ADCBUF2;

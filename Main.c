@@ -165,16 +165,18 @@ void DoStateMachine(void) {
     ClrWdt();
     InitPeripherals();
     InitPWM();
-    control_state = STATE_MOTOR_ZERO;
+    control_state = STATE_WAIT_FOR_AUTO_ZERO;
     break;
 
 
   case STATE_WAIT_FOR_AUTO_ZERO:
+    software_auto_zero = 0;
     while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
+      DoSerialCommand();
+      ClrWdt();
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (software_auto_zero) {
-	software_auto_zero = 0;
 	control_state = STATE_MOTOR_ZERO;
       }
     }
@@ -186,7 +188,7 @@ void DoStateMachine(void) {
     afc_motor.min_position = 0;
     afc_motor.current_position = afc_motor.max_position;
     afc_motor.target_position = afc_motor.min_position;
-    
+    software_auto_zero = 0;
     while (control_state == STATE_MOTOR_ZERO) {
       DoSerialCommand();
       ClrWdt();
@@ -230,6 +232,7 @@ void DoStateMachine(void) {
     
     
   case STATE_MANUAL_MODE:
+    software_auto_zero = 0;
     while (control_state == STATE_MANUAL_MODE) {
       ClrWdt();
       DoSerialCommand();
@@ -310,6 +313,7 @@ void DoStateMachine(void) {
       ClrWdt();
       DoSerialCommand();
       DoSystemCooldown();
+      ClearAFCErrorHistory();
       // Look for change of state
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -772,9 +776,9 @@ void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
   if (adc_parameter_input <= 6553) {
     U24_MCP4725.data_12_bit = (afc_motor.current_position << 2);
   } else if (adc_parameter_input <= 13107) {
-    U24_MCP4725.data_12_bit = 0x0000; 
+    U24_MCP4725.data_12_bit = afc_data.sigma_data << 2;
   } else if (adc_parameter_input <= 32767) {
-    U24_MCP4725.data_12_bit = 0x0000;
+    U24_MCP4725.data_12_bit = afc_data.delta_data << 2;
   } else if (adc_parameter_input <= 45874) {
     U24_MCP4725.data_12_bit = (pulse_frequency << 2);
   } else if (adc_parameter_input <= 58981) {

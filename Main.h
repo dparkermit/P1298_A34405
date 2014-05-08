@@ -22,6 +22,7 @@
 // STATE DEFINITIONS
 
 #define STATE_STARTUP            0x10
+#define STATE_WAIT_FOR_AUTO_ZERO 0x18
 #define STATE_MOTOR_ZERO         0x20
 #define STATE_MOTOR_STARTUP_HOME 0x24
 #define STATE_RESET              0x30
