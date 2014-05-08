@@ -62,11 +62,9 @@
 
 
 extern unsigned char control_state;
-
-
-
 extern unsigned int prf_counter;
-
+extern unsigned int pulse_frequency;
+extern unsigned char software_auto_zero;
 
 typedef struct {
   unsigned int sigma_data;
@@ -76,6 +74,7 @@ typedef struct {
   signed char frequency_error_offset;
   unsigned char data_pointer; 
   unsigned char trigger_complete;
+  unsigned char fast_afc_done;
   signed char slow_response_error_counter;
   unsigned int pulses_on;
   unsigned int time_off_100ms_units;
@@ -83,7 +82,7 @@ typedef struct {
 
 extern TYPE_AFC_DATA afc_data;
 
-extern unsigned int pulse_frequency;
+
 
 
 

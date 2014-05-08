@@ -7,19 +7,21 @@
 #include "MCP4725.h"
 
  
-#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  32
+#define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  128
 
-#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      126
-#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      108
-#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      72
-#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      36
+#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      108
+#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      78
+#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      48
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      12
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         24
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         16
 #define FREQUENCY_ERROR_SLOW_ERROR_COUNT       8
 
 
 
 #define LINAC_COOLDOWN_OFF_TIME                30  // 3 seconds
+
+
 
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
 _FICD(ICS_PGD);                                         /* Enable Primary ICP pins */
@@ -61,7 +63,7 @@ TYPE_AFC_DATA afc_data;
 unsigned char control_state;
 unsigned int prf_counter;
 unsigned int pulse_frequency;
-
+unsigned char software_auto_zero;
 
 
 // Local Variables and Function Prototypes
@@ -100,6 +102,8 @@ void DoStateMachine(void);
 void InitPeripherals(void);
 
 void ResetI2C(void);
+
+void ClearAFCErrorHistory(void);
 
 void ResetI2C(void) {
   unsigned char n;
@@ -163,6 +167,19 @@ void DoStateMachine(void) {
     InitPWM();
     control_state = STATE_MOTOR_ZERO;
     break;
+
+
+  case STATE_WAIT_FOR_AUTO_ZERO:
+    while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
+      if (FaultCheck()) {
+	control_state = STATE_FAULT;
+      } else if (software_auto_zero) {
+	software_auto_zero = 0;
+	control_state = STATE_MOTOR_ZERO;
+      }
+    }
+    break;
+
 
   case STATE_MOTOR_ZERO:
     afc_motor.max_position = 1000;
@@ -240,11 +257,11 @@ void DoStateMachine(void) {
 	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, 1);
       }
 
-      
-    
       // Change state if needed
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
+      } else if (software_auto_zero) {
+	control_state = STATE_MOTOR_ZERO;
       } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
 	control_state = STATE_RESET;
       }  
@@ -267,6 +284,7 @@ void DoStateMachine(void) {
 
   case STATE_AFC_PULSING:
     afc_data.pulses_on = 0;
+    afc_data.fast_afc_done = 0;
     while (control_state == STATE_AFC_PULSING) {
       ClrWdt();
       DoSerialCommand();
@@ -463,9 +481,6 @@ void InitPeripherals(void){
   ADCPC2 = ADCPC2_DEFAULT;
   _ADON = 1;
 
-  
-
-
   U24_MCP4725.address = MCP4725_ADDRESS_A0_0;
   U24_MCP4725.i2c_port = 0;
   U24_MCP4725.data_12_bit = 0x0000;
@@ -475,15 +490,45 @@ void InitPeripherals(void){
   
   ResetI2C();
 
+  software_auto_zero = 0;
+  prf_counter = 0;
 }    
  
+// DPARKER added the following as an alternative AFC startup response
+#define DYNAMIC_FAST_AFC_LENGTH
+
+
+
+void ClearAFCErrorHistory(void) {
+  afc_data.frequency_error_history[0] = 0;
+  afc_data.frequency_error_history[1] = 0;
+  afc_data.frequency_error_history[2] = 0;
+  afc_data.frequency_error_history[3] = 0;
+  afc_data.frequency_error_history[4] = 0;
+  afc_data.frequency_error_history[5] = 0;
+  afc_data.frequency_error_history[6] = 0;
+  afc_data.frequency_error_history[7] = 0;
+  afc_data.frequency_error_history[8] = 0;
+  afc_data.frequency_error_history[9] = 0;
+  afc_data.frequency_error_history[10] = 0;
+  afc_data.frequency_error_history[11] = 0;
+  afc_data.frequency_error_history[12] = 0;
+  afc_data.frequency_error_history[13] = 0;
+  afc_data.frequency_error_history[14] = 0;
+  afc_data.frequency_error_history[15] = 0;
+}
 
 
 void DoAFC(void) {
   unsigned int new_target_position;
   // Sigma/delta data is 10 bit unsigned so we should have no problem with the conversion to signed and overflow even with the frequency error offset.
   new_target_position = afc_motor.current_position;
+
+#ifdef DYNAMIC_FAST_AFC_LENGTH
+  if ((afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
+#else
   if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+#endif
     /*
       The magnetron has just turned on after being off for a period of time.
       The tuner *could* be wildly out of position.
@@ -499,7 +544,12 @@ void DoAFC(void) {
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
       new_target_position += 1;
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
-      // Do Nothing
+#ifdef DYNAMIC_FAST_AFC_LENGTH
+      if (afc_data.pulses_on >= 4) {
+	afc_data.fast_afc_done = 1;
+	ClearAFCErrorHistory();
+      }
+#endif 
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_2_STEPS) {
       if (new_target_position >= 1) {
 	new_target_position -= 1;
@@ -526,12 +576,12 @@ void DoAFC(void) {
       }
     }
   } else {    
-    /*
-      The magnetron has been pulsing for a while.
-      The tuner is very close to where it should be so we just need to correct for minor drifts
-      We can filter/average the incoming data over a longer timeframe
-      The gain of the response can be much lower - Max 1 step per 8 samples
-    */
+      /*
+	The magnetron has pulsing for Number Of Startup Pulses (or the error has reached zero) 
+	The tuner is very close to where it should be so we just need to correct for minor drifts
+	We can filter/average the incoming data over a longer timeframe
+	The gain of the response can be much lower - Max 1 step per 8 samples
+      */
     
     if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
       afc_data.slow_response_error_counter++;
@@ -554,10 +604,19 @@ void DoAFC(void) {
   }
   SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
 }
+  
+  
 
 
+  // DPARKER there is still a problem with the dynamic fast response
+  // If you exit the fast response mode early, you will have bongus data in the error array.
+  // Probably need to clear that array first;
 void FilterFrequencyErrorData(void) {
-  if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+#ifdef DYNAMIC_FAST_AFC_LENGTH
+  if ((afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
+#else
+    if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+#endif
     afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
   } else {
     afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();

@@ -9,13 +9,14 @@
 #define CMD_SET_TARGET_POSITION                         0x30
 #define CMD_MOVE_CLOCKWISE                              0x32
 #define CMD_MOVE_COUNTER_CLOCKWISE                      0x34
+#define CMD_SET_HOME_POSITION                           0x36
 #define CMD_READ_EEPROM_REGISTER                        0x40
 #define CMD_WRITE_EEPROM_REGISTER                       0x42
 #define CMD_OVERCURRENT_SHUTDOWN_TEST                   0xE0
 #define CMD_READ_AFC_ERROR_DATA_HISTORY                 0x50
 #define CMD_READ_MEM_LOCATION                           0x54
 #define CMD_SET_ERROR_OFFSET                            0x60
-#define CMD_SET_HOME_POSITION                           0x36
+#define CMD_DO_POSITION_AUTO_ZERO                       0x70
 
 
 // RAM Locations

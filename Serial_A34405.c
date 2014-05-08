@@ -157,6 +157,10 @@ void ExecuteCommand(void) {
       SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, data_word);
       break;
 
+    case CMD_DO_POSITION_AUTO_ZERO:
+      software_auto_zero = 1;
+      break;
+
 
     case CMD_READ_EEPROM_REGISTER:
       
