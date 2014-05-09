@@ -585,6 +585,7 @@ void DoAFC(void) {
 	new_target_position = 0;
       }
     }
+    SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
   } else {    
       /*
 	The magnetron has pulsing for Number Of Startup Pulses (or the error has reached zero) 
@@ -602,18 +603,20 @@ void DoAFC(void) {
       afc_data.slow_response_error_counter = 0;
       if (new_target_position <= 0xFFFE) {
 	new_target_position++;
+	SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
       }
     } else if (afc_data.slow_response_error_counter <= -FREQUENCY_ERROR_SLOW_ERROR_COUNT) {
       if (new_target_position > 0) {
 	afc_data.slow_response_error_counter = 0;
 	if (new_target_position >= 1) {
 	  new_target_position--;
+	  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
 	}
       }
     }
   }
-  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
-}
+  SendLoggingDataToUart();
+  }
   
   
 

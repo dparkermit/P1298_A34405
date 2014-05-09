@@ -39,6 +39,8 @@ BUFFERBYTE64 uart1_output_buffer;
 
 unsigned int *ram_pointer;
 
+unsigned char data_logging_to_uart;
+
 void DoSerialCommand(void) {
   /* 
      Look for a command and execute it.
@@ -96,27 +98,65 @@ void LookForCommand(void) {
   }
 }
 
+void SendLoggingDataToUart() {
+  unsigned char byte;
+  if (data_logging_to_uart) {
+    BufferByte64WriteByte(&uart1_output_buffer, 0xFE);
+    BufferByte64WriteByte(&uart1_output_buffer, (afc_motor.current_position >> 8));
+    BufferByte64WriteByte(&uart1_output_buffer, (afc_motor.current_position & 0x00FF));
+    BufferByte64WriteByte(&uart1_output_buffer, (afc_motor.target_position >> 8));
+    BufferByte64WriteByte(&uart1_output_buffer, (afc_motor.target_position & 0x00FF));
+
+    if (afc_data.sigma_data > 0xFF) {
+      byte = 0xFF;
+    } else {
+      byte = afc_data.sigma_data;
+    }
+    BufferByte64WriteByte(&uart1_output_buffer, (byte & 0x00FF));
+
+    if (afc_data.delta_data > 0xFF) {
+      byte = 0xFF;
+    } else {
+      byte = afc_data.delta_data;
+    }
+    BufferByte64WriteByte(&uart1_output_buffer, (byte & 0x00FF));
+
+    BufferByte64WriteByte(&uart1_output_buffer, afc_data.frequency_error_filtered);
+    BufferByte64WriteByte(&uart1_output_buffer, (afc_data.pulses_on >> 8));
+    BufferByte64WriteByte(&uart1_output_buffer, (afc_data.pulses_on & 0x00FF));
+    if ((!U1STAbits.UTXBF) && (BufferByte64IsNotEmpty(&uart1_output_buffer))) {
+      /*
+	There is at least one byte available for writing in the outputbuffer and the transmit buffer is not full.
+	Move a byte from the output buffer into the transmit buffer
+	All subsequent bytes will be moved from the output buffer to the transmit buffer by the U1 TX Interrupt
+      */
+      U1TXREG = BufferByte64ReadByte(&uart1_output_buffer);
+    }
+  }
+}
 
 void SendCommand(unsigned char command_byte, unsigned char register_byte, unsigned int data_word) {
   unsigned int crc;
-  crc = MakeCRC(command_byte, register_byte, data_word);
-  BufferByte64WriteByte(&uart1_output_buffer, SYNC_BYTE_1);
-  BufferByte64WriteByte(&uart1_output_buffer, SYNC_BYTE_2);
-  BufferByte64WriteByte(&uart1_output_buffer, SYNC_BYTE_3_SEND);
-  BufferByte64WriteByte(&uart1_output_buffer, command_byte);
-  BufferByte64WriteByte(&uart1_output_buffer, (data_word >> 8));
-  BufferByte64WriteByte(&uart1_output_buffer, (data_word & 0x00FF));
-  BufferByte64WriteByte(&uart1_output_buffer, register_byte);
-  BufferByte64WriteByte(&uart1_output_buffer, (crc >> 8));
-  BufferByte64WriteByte(&uart1_output_buffer, (crc & 0x00FF));
-
-  if ((!U1STAbits.UTXBF) && (BufferByte64IsNotEmpty(&uart1_output_buffer))) {
-    /*
-      There is at least one byte available for writing in the outputbuffer and the transmit buffer is not full.
-      Move a byte from the output buffer into the transmit buffer
-      All subsequent bytes will be moved from the output buffer to the transmit buffer by the U1 TX Interrupt
-    */
-    U1TXREG = BufferByte64ReadByte(&uart1_output_buffer);
+  if (!data_logging_to_uart) {
+    crc = MakeCRC(command_byte, register_byte, data_word);
+    BufferByte64WriteByte(&uart1_output_buffer, SYNC_BYTE_1);
+    BufferByte64WriteByte(&uart1_output_buffer, SYNC_BYTE_2);
+    BufferByte64WriteByte(&uart1_output_buffer, SYNC_BYTE_3_SEND);
+    BufferByte64WriteByte(&uart1_output_buffer, command_byte);
+    BufferByte64WriteByte(&uart1_output_buffer, (data_word >> 8));
+    BufferByte64WriteByte(&uart1_output_buffer, (data_word & 0x00FF));
+    BufferByte64WriteByte(&uart1_output_buffer, register_byte);
+    BufferByte64WriteByte(&uart1_output_buffer, (crc >> 8));
+    BufferByte64WriteByte(&uart1_output_buffer, (crc & 0x00FF));
+  
+    if ((!U1STAbits.UTXBF) && (BufferByte64IsNotEmpty(&uart1_output_buffer))) {
+      /*
+	There is at least one byte available for writing in the outputbuffer and the transmit buffer is not full.
+	Move a byte from the output buffer into the transmit buffer
+	All subsequent bytes will be moved from the output buffer to the transmit buffer by the U1 TX Interrupt
+      */
+      U1TXREG = BufferByte64ReadByte(&uart1_output_buffer);
+    }
   }
 }
 
@@ -192,6 +232,14 @@ void ExecuteCommand(void) {
 
     case CMD_SET_HOME_POSITION:
       afc_motor.home_position = data_word;
+      break;
+
+    case CMD_DATA_LOGGING:
+      if (command_string.register_byte == 1) {
+	data_logging_to_uart = 1;
+      } else {
+      	data_logging_to_uart = 0;
+      }
       break;
 
     case CMD_OVERCURRENT_SHUTDOWN_TEST:

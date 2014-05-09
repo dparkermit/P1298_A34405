@@ -17,6 +17,7 @@
 #define CMD_READ_MEM_LOCATION                           0x54
 #define CMD_SET_ERROR_OFFSET                            0x60
 #define CMD_DO_POSITION_AUTO_ZERO                       0x70
+#define CMD_DATA_LOGGING                                0x56
 
 
 // RAM Locations
@@ -71,6 +72,7 @@ extern BUFFERBYTE64 uart1_output_buffer;
 
 void DoSerialCommand(void);
 
+void SendLoggingDataToUart();
 
 
 /*
