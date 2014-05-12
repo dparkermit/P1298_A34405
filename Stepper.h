@@ -6,15 +6,21 @@
 #define DEADTIME_NANO_SECONDS      600         // This is the deadtime between the motor drive mosfets
 
 #define STEPS_PER_SECOND           100         // The motor will move at 100 steps per second or 1/2 Revolution per Second
+#define STEPS_PER_SECOND_SLOW      25          //
 
 #define PWM_TO_MICROSTEP_RATIO      6          // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
-#define PWM_TO_MICROSTEP_RATIO_SLOW_MODE      12         // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
+#define PWM_TO_MICROSTEP_RATIO_SLOW_MODE      36         // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
 #define MOTOR_LOW_POWER_DELAY      .1          // This is the time (in seconds) that the system wait with no motor movement to switch to low power mode
                                                // This value must be less than or equal to 2^16-1 times the PWM period (about 1.6 seconds at 40KHz)
 
 #define MOTOR_MINIMUM_POSITION      100        // Under normal operation (not Zero Find) the motor position can not go below this value
 #define MOTOR_MAXIMUM_POSITION      800        // Under normal operation (not Zero Find) the motor position can not go above this value
 #define MOTOR_DEFAULT_HOME_POSITION 670        // This is the default home position that is load at boot-up.  It should be overwritten by the PLC
+
+
+#define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
+#define T2_PERIOD_VALUE_SLOW      (unsigned int)(FCY/256/STEPS_PER_SECOND_SLOW)
+
 
 
 

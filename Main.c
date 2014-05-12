@@ -385,7 +385,7 @@ void InitPeripherals(void){
   /* With 29 MHz Clock and 256 pre-scale the minimum pulses per second is 2*/
 
 
-#define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
+
 #define T2_CONFIG_VALUE           0b1000000000110000   // Timer On and 256 Prescale
 
 
@@ -588,6 +588,13 @@ void DoAFC(void) {
 	The gain of the response can be much lower - Max 1 step per 8 samples
       */
     afc_data.fast_afc_done = 1;
+    new_target_position = afc_motor.target_position; // DPARKER put in for test, remove
+    if (new_target_position >= (afc_motor.current_position + 1)) {
+      new_target_position = afc_motor.current_position + 1;
+    } else if (new_target_position <= (afc_motor.current_position - 1)) {
+      new_target_position = afc_motor.current_position - 1;
+    }
+    
 
     if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
       afc_data.slow_response_error_counter++;
