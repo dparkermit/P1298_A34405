@@ -14,8 +14,8 @@
 #define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      48
 #define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      12
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         16
-#define FREQUENCY_ERROR_SLOW_ERROR_COUNT       8
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         12
+#define FREQUENCY_ERROR_SLOW_ERROR_COUNT       10
 
 
 
@@ -294,7 +294,6 @@ void DoStateMachine(void) {
       ClrWdt();
       DoSerialCommand();
       DoSystemCooldown();
-      ClearAFCErrorHistory();
       // Look for change of state
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
@@ -534,11 +533,8 @@ void DoAFC(void) {
   // Sigma/delta data is 10 bit unsigned so we should have no problem with the conversion to signed and overflow even with the frequency error offset.
   new_target_position = afc_motor.current_position;
 
-#ifdef DYNAMIC_FAST_AFC_LENGTH
+
   if ((afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
-#else
-  if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
-#endif
     /*
       The magnetron has just turned on after being off for a period of time.
       The tuner *could* be wildly out of position.
@@ -554,12 +550,10 @@ void DoAFC(void) {
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
       new_target_position += 1;
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
-#ifdef DYNAMIC_FAST_AFC_LENGTH
       if (afc_data.pulses_on >= 4) {
 	afc_data.fast_afc_done = 1;
-	ClearAFCErrorHistory();
+	//ClearAFCErrorHistory(); // DPARKER no need to clear AFC data anymore
       }
-#endif 
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_2_STEPS) {
       if (new_target_position >= 1) {
 	new_target_position -= 1;
@@ -586,14 +580,15 @@ void DoAFC(void) {
       }
     }
     SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
-  } else {    
+  } else {
       /*
 	The magnetron has pulsing for Number Of Startup Pulses (or the error has reached zero) 
 	The tuner is very close to where it should be so we just need to correct for minor drifts
 	We can filter/average the incoming data over a longer timeframe
 	The gain of the response can be much lower - Max 1 step per 8 samples
       */
-    
+    afc_data.fast_afc_done = 1;
+
     if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
       afc_data.slow_response_error_counter++;
     } else if (afc_data.frequency_error_filtered < -FREQUENCY_ERROR_SLOW_THRESHOLD) {
@@ -621,18 +616,12 @@ void DoAFC(void) {
   
 
 
-  // DPARKER there is still a problem with the dynamic fast response
-  // If you exit the fast response mode early, you will have bongus data in the error array.
-  // Probably need to clear that array first;
 void FilterFrequencyErrorData(void) {
-#ifdef DYNAMIC_FAST_AFC_LENGTH
   if ((afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
-#else
-    if (afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
-#endif
     afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
   } else {
-    afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
+    // afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
+    afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();  // DPARKER, for the moment we want to use the fast filter (average over previous two samples)  
   }
 }
 

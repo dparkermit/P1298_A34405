@@ -2,9 +2,6 @@
 #define __MAIN_H
 
 
-// DPARKER added the following as an alternative AFC startup response
-#define DYNAMIC_FAST_AFC_LENGTH
-
 
 /********************** dsPIC parameters *******************************/
 #define FCY                         29100000    // FRC = 14.55MHz , PLL= X32 , FCY = 14.55e6*32/8/2 = 29.1e6

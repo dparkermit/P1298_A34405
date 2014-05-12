@@ -176,6 +176,7 @@ void SetMotorTarget(unsigned int position_type, unsigned int value) {
 
 */
 void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchInterrupt(void) {
+  unsigned int pwm_slow_down_value;
   unsigned int pwm_table_index_32;
   unsigned int pwm_table_index_64;
   unsigned int pwm_table_index_96;
@@ -215,7 +216,14 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
   // Move through the micro step table if the motor is moving
     motor_stopped_counter_pwm_cycles = 0;
     pwm_microstep_counter++;
-    if (pwm_microstep_counter >= PWM_TO_MICROSTEP_RATIO) {
+    if ((control_state == STATE_AFC_PULSING) && (afc_data.fast_afc_done)) {
+      // We know that we are moving the motor slowly, so slow down the motor step transitions to damp out osciallations
+      // DPARKER, it would probably be safest to limit the motor movement interrupt here as well (or do both in the same location)
+      pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO_SLOW_MODE;
+    } else {
+      pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO;
+    }
+    if (pwm_microstep_counter >= pwm_slow_down_value) {
       pwm_microstep_counter = 0;
       if (afc_motor.motor_motion == MOTOR_MOTION_CLOCKWISE) {
 	  pwm_table_index--;

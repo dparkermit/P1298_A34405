@@ -8,6 +8,7 @@
 #define STEPS_PER_SECOND           100         // The motor will move at 100 steps per second or 1/2 Revolution per Second
 
 #define PWM_TO_MICROSTEP_RATIO      6          // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
+#define PWM_TO_MICROSTEP_RATIO_SLOW_MODE      12         // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
 #define MOTOR_LOW_POWER_DELAY      .1          // This is the time (in seconds) that the system wait with no motor movement to switch to low power mode
                                                // This value must be less than or equal to 2^16-1 times the PWM period (about 1.6 seconds at 40KHz)
 
