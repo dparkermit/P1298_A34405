@@ -57,6 +57,11 @@ typedef struct {
   unsigned int adc_motor_current_b;
 } STEPPER_MOTOR;
 
+#define MOTOR_MOTION_COUNTER_CLOCKWISE  0
+#define MOTOR_MOTION_CLOCKWISE          1
+#define MOTOR_MOTION_STOPPED            2
+
+
 
 extern STEPPER_MOTOR afc_motor;
 

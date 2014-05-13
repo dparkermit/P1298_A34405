@@ -25,10 +25,6 @@ unsigned int adc_motor_current_b_accumulator;    // This stores the data for the
 unsigned int adc_home_position_accumulator;      // This stores the data for the "home position" input that we average
 
 
-#define MOTOR_MOTION_COUNTER_CLOCKWISE  0
-#define MOTOR_MOTION_CLOCKWISE          1
-#define MOTOR_MOTION_STOPPED            2
-
 #define DEADTIME                             (unsigned int)(DEADTIME_NANO_SECONDS/1.07)
 #define PTPER_VALUE                          (unsigned int)(FCY*32/MOTOR_PWM_FCY)
 #define MOTOR_DECREASE_CURRENT_PWM_CYCLES    (unsigned int) (MOTOR_PWM_FCY * MOTOR_LOW_POWER_DELAY)

@@ -5,6 +5,7 @@
 #include "Stepper.h"
 #include "Serial_A34405.h"
 #include "MCP4725.h"
+#include "tables.h"
 
  
 #define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  128
@@ -12,15 +13,19 @@
 #define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      108
 #define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      78
 #define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      48
-#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      12
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      14
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         12
-#define FREQUENCY_ERROR_SLOW_ERROR_COUNT       10
-
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         20
 
 
-#define LINAC_COOLDOWN_OFF_TIME                30  // 3 seconds
 
+#define LINAC_COOLDOWN_OFF_TIME                10  // 1 seconds
+
+
+
+#define COOL_DOWN_TABLE_MAX_INDEX              511 // .8 second units to 408 seconds 
+
+const unsigned int CoolDownTable[512] = {COOL_DOWN_TABLE_VALUES};
 
 
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
@@ -290,6 +295,7 @@ void DoStateMachine(void) {
     break;
 
   case STATE_AFC_NOT_PULSING:
+    afc_data.distance_from_home_at_stop = afc_motor.home_position - afc_motor.current_position;
     while (control_state == STATE_AFC_NOT_PULSING) {
       ClrWdt();
       DoSerialCommand();
@@ -485,12 +491,36 @@ void InitPeripherals(void){
   It will then move (1 - LINAC_COOLDOWN_FACTIONAL_MULTIPLIER) percent of the way home (minimum of one step)
 
   // DPARKER it may be nessesary to modify so that the momevement is smoother (and does not have the one step minimum movement) - Especially if we are always working with small step sizes.
-*/ 
+*/
 void DoSystemCooldown(void) {
+  // DPARKER figure out how to make this work with negative number for "distance from home at stop" 
+  unsigned int time_index;
+  unsigned int multiplier;
+  unsigned long result;
+  unsigned int remainder;
+  if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
+    time_index = (afc_data.time_off_100ms_units >> 3);  // Time index will be in .8 second units
+    if (time_index >= COOL_DOWN_TABLE_MAX_INDEX) {
+      time_index = COOL_DOWN_TABLE_MAX_INDEX;
+    } 
+    multiplier = CoolDownTable[time_index];
+    result = multiplier;
+    result *= afc_data.distance_from_home_at_stop;
+    remainder = result & 0x0000FFFF;
+    result >>= 16;
+    if (remainder >= 0x8000) {
+      result++;
+    }
+    SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, (afc_motor.home_position - result));
+  }
+  
+
+
+  /*
   signed long temperature_offset;
   if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
     afc_data.time_off_100ms_units = 0;
-    if (afc_motor.current_position > afc_motor.home_position) {
+      if (afc_motor.current_position > afc_motor.home_position) {
       temperature_offset = afc_motor.current_position;
       temperature_offset -= afc_motor.home_position;
       temperature_offset *= LINAC_COOLDOWN_FACTIONAL_MULTIPLIER;
@@ -504,6 +534,7 @@ void DoSystemCooldown(void) {
       afc_motor.target_position = afc_motor.home_position - temperature_offset;
     }
   }
+  */
 }
 
 
@@ -581,35 +612,56 @@ void DoAFC(void) {
     }
     SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
   } else {
-      /*
-	The magnetron has pulsing for Number Of Startup Pulses (or the error has reached zero) 
-	The tuner is very close to where it should be so we just need to correct for minor drifts
-	We can filter/average the incoming data over a longer timeframe
-	The gain of the response can be much lower - Max 1 step per 8 samples
-      */
     afc_data.fast_afc_done = 1;
-    new_target_position = afc_motor.target_position; // DPARKER put in for test, remove
-    if (new_target_position >= (afc_motor.current_position + 1)) {
-      new_target_position = afc_motor.current_position + 1;
-    } else if (new_target_position <= (afc_motor.current_position - 1)) {
-      new_target_position = afc_motor.current_position - 1;
-    }
-    
+    /*
+      The magnetron has pulsing for Number Of Startup Pulses (or the error has reached zero) 
+      The tuner is very close to where it should be so we just need to correct for minor drifts
+      We can filter/average the incoming data over a longer timeframe
+    */
 
-    if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
-      afc_data.slow_response_error_counter++;
-    } else if (afc_data.frequency_error_filtered < -FREQUENCY_ERROR_SLOW_THRESHOLD) {
-      afc_data.slow_response_error_counter--;
-    }
-    if (afc_data.slow_response_error_counter >= FREQUENCY_ERROR_SLOW_ERROR_COUNT) {
-      afc_data.slow_response_error_counter = 0;
-      if (new_target_position <= 0xFFFE) {
-	new_target_position++;
-	SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
-      }
-    } else if (afc_data.slow_response_error_counter <= -FREQUENCY_ERROR_SLOW_ERROR_COUNT) {
-      if (new_target_position > 0) {
-	afc_data.slow_response_error_counter = 0;
+    /* 
+       When pulsing at 400Hz, it can take a lot of pulses to move the motor.
+       We don't want to be calculating a new target with data that is taken while the motor is moving
+       Therefore we only evaluate error position data while the motor is not moving
+       
+       If we are pulsing at lower frequencies, we still need to use the data that we get to update the motor position
+       frequency_error_filtered contains an average of the previous 8 data points (note this will take 8 samples to ramp up after the motor has stopped moving)
+       If that average value is above the error threshold, then the target positon of the motor is moved.
+    */
+
+    /*
+      Assuming, PWM_TO_MICROSTEP_RATIO_SLOW_MODE = 36, and STEPS_PER_SECOND_SLOW = 26
+      At 50Hz pulse rate, what is the fastest the motor will move?
+      Well it takes 20.8ms To move the motor 1 step
+      It takes 160ms to generate fill the table with 8 data points
+      Therefore if the error is above the threshold the entire time, the logest it can take to request a turn is 180mS.
+      If the error is right at the error threshold it will take 5 motor cycle interrupts to move one step.
+      .5 steps per second.
+      Obviously if the error is more severe it will take less time.
+
+      At 400Hz pulse rate, what is the fastest the motor will move?
+      Well it takes 20.8ms To move the motor 1 step
+      It takes 20ms to generate fill the table with 8 data points
+      Therefore if the error is above the threshold the entire time, the logest it can take to request a turn is 40.8mS.
+      If the error is right at the error threshold it will take 2 motor cycle interrupts to move one step. 
+      12.5 steps per second
+
+
+      Is this fast enough?  We will need to look at test data and see if our error increases faster than the AFC can track
+    */
+    
+    if (afc_motor.current_position == afc_motor.target_position) {
+      /* 
+	 If the target position != to the current_position then we have already instructed to motor to move.  
+	 We should wait for that process to complete before telling it to move again
+      */
+      new_target_position = afc_motor.current_position;
+      if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
+	if (new_target_position <= 0xFFFE) {
+	  new_target_position++;
+	  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
+	}	
+      } else if (afc_data.frequency_error_filtered < -FREQUENCY_ERROR_SLOW_THRESHOLD) {
 	if (new_target_position >= 1) {
 	  new_target_position--;
 	  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
@@ -618,8 +670,8 @@ void DoAFC(void) {
     }
   }
   SendLoggingDataToUart();
-  }
-  
+}
+
   
 
 
@@ -627,36 +679,56 @@ void FilterFrequencyErrorData(void) {
   if ((afc_data.pulses_on <= NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
     afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
   } else {
-    // afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
-    afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();  // DPARKER, for the moment we want to use the fast filter (average over previous two samples)  
+    afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
   }
 }
 
 
 
 signed char FrequencyErrorFilterSlowResponse() {
-  signed int average;
-  // Average the previous 16 data points
-  average = afc_data.frequency_error_history[0];
-  average += afc_data.frequency_error_history[1];
-  average += afc_data.frequency_error_history[2];
-  average += afc_data.frequency_error_history[3];
-  average += afc_data.frequency_error_history[4];
-  average += afc_data.frequency_error_history[5];
-  average += afc_data.frequency_error_history[6];
-  average += afc_data.frequency_error_history[7];
-  average += afc_data.frequency_error_history[8];
-  average += afc_data.frequency_error_history[9];
-  average += afc_data.frequency_error_history[10];
-  average += afc_data.frequency_error_history[11];
-  average += afc_data.frequency_error_history[12];
-  average += afc_data.frequency_error_history[13];
-  average += afc_data.frequency_error_history[14];
-  average += afc_data.frequency_error_history[15];
-  
-  average >>= 4; 
+  // average the previous 8 data points
+  // if the motor is moving, error data is set to zero
 
-  return average;
+  signed int average;
+  unsigned char location;
+  
+  if (afc_data.pulses_on < 8) {
+    return 0;
+  } else {
+    
+    location = afc_data.data_pointer;
+    // Remember that data_pointer points to the NEXT place to put data, so most recent data is n-1
+    // If number of pulses is greater than or equal to 8, Average the prevous 8 data points
+    location--;
+    location &= 0x0F;
+    average = afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+    location--;
+    location &= 0x0F;
+    average += afc_data.frequency_error_history[location];
+
+
+    average >>= 3; 
+    
+    return average;
+  }
 }
 
 signed char FrequencyErrorFilterFastResponse() {
@@ -747,6 +819,17 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   } else if ( error < -128) {
     error = -128;
   }
+  if ((afc_data.fast_afc_done) && (afc_motor.motor_motion != MOTOR_MOTION_STOPPED)) {
+    /* 
+       When pulsing at 400Hz, it can take a lot of pulses to move the motor.
+       We don't want to be calculating a new target with data that is taken while the motor is moving
+       Therefore we only evaluate error position data while the motor is not moving
+       
+       The easiest way to this is to just set the error data to zero if the motor is moving and we are in "slow mode"
+       Remember that in "fast mode" we do adjust the motor position while it is still moving, so we have to store data if fast mode is not done
+    */
+    error = 0;
+  }
   afc_data.frequency_error_history[afc_data.data_pointer] = error;
   afc_data.data_pointer++;
   afc_data.data_pointer &= 0x0F;
@@ -806,6 +889,9 @@ void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 
   // Update the not pulsing counter
   afc_data.time_off_100ms_units++;
+  if (afc_data.time_off_100ms_units >= 0xFF00) {
+    afc_data.time_off_100ms_units = 0xFF00;
+  }
 }
 
 

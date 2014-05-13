@@ -67,9 +67,9 @@ typedef struct {
   unsigned char data_pointer; 
   unsigned char trigger_complete;
   unsigned char fast_afc_done;
-  signed char slow_response_error_counter;
   unsigned int pulses_on;
   unsigned int time_off_100ms_units;
+  signed int distance_from_home_at_stop;
 } TYPE_AFC_DATA;
 
 // GLOBAL VARIABLES
