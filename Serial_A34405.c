@@ -228,6 +228,13 @@ void ExecuteCommand(void) {
 	afc_data.frequency_error_offset = 0;
 	afc_data.frequency_error_offset -= data_word;
       }
+      afc_config_ram_copy[4] = afc_data.frequency_error_offset;  // DPARKER add defined locations, can not use first 4 bytes or CPU will crash
+      //_wait_eedata();
+      //_erase_flash(FLASH_address_afc_config);
+      //_wait_eedata();
+      //__delay32(2900000);
+      ClrWdt();
+      //_write_flash16(FLASH_address_afc_config, afc_config_ram_copy);
       break;
 
     case CMD_SET_HOME_POSITION:

@@ -1,6 +1,6 @@
 #ifndef __MAIN_H
 #define __MAIN_H
-
+#include <libpic30.h>
 
 
 /********************** dsPIC parameters *******************************/
@@ -79,6 +79,8 @@ extern unsigned int pulse_frequency;
 extern unsigned char software_auto_zero;
 extern TYPE_AFC_DATA afc_data;
 
+extern _prog_addressT FLASH_address_afc_config;
+extern unsigned int afc_config_ram_copy[16];
 
 
 #endif
