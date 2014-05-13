@@ -228,12 +228,19 @@ void ExecuteCommand(void) {
 	afc_data.frequency_error_offset = 0;
 	afc_data.frequency_error_offset -= data_word;
       }
-      afc_config_ram_copy[4] = afc_data.frequency_error_offset;  // DPARKER add defined locations, can not use first 4 bytes or CPU will crash
+      //afc_config_ram_copy[4] = afc_data.frequency_error_offset;  // DPARKER add defined locations, can not use first 4 bytes or CPU will crash
       //_wait_eedata();
+     
+      Nop();
+      Nop();
+      Nop();
       //_erase_flash(FLASH_address_afc_config);
       //_wait_eedata();
       //__delay32(2900000);
       ClrWdt();
+      Nop();
+      Nop();
+      Nop();
       //_write_flash16(FLASH_address_afc_config, afc_config_ram_copy);
       break;
 

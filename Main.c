@@ -36,9 +36,9 @@ _FWDT(FWDTEN_ON & WDTPOST_PS2048 & WDTPRE_PR32);        /* Enable Watch Dog */ /
 _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal fast RC 14.55MHz clock multiplied by X32 PLL  FOSC = 14.55e6*32/8 = 58.2MHz FCY = FOSC/2 = 29.1MHz*/
 
 
-_prog_addressT FLASH_address_afc_config;
-unsigned int __attribute__((space(psv),aligned(_FLASH_ROW))) afc_config_in_FLASH[] = {0,1,2,3, 4,5,6,7, 8,9,10,11, 12,13,14,15};  // Create 16 word structure in FLASH and load default configuration values
-unsigned int afc_config_ram_copy[16];
+//_prog_addressT FLASH_address_afc_config;
+//int __attribute__((space(psv),aligned(_FLASH_ROW))) afc_config_in_FLASH[] = {0,1,2,3, 4,5,6,7, 8,9,10,11, 12,13,14,15};  // Create 16 word structure in FLASH and load default configuration values
+//int afc_config_ram_copy[16];
 
 
 
@@ -128,9 +128,9 @@ int main (void) {
   __delay32(30000000);
   
   
-  _init_prog_address(FLASH_address_afc_config, afc_config_in_FLASH);
-  _memcpy_p2d16(afc_config_ram_copy, FLASH_address_afc_config, _FLASH_ROW);
-  ClrWdt();
+  //_init_prog_address(FLASH_address_afc_config, afc_config_in_FLASH);
+  //_memcpy_p2d16(afc_config_ram_copy, FLASH_address_afc_config, _FLASH_ROW);
+  //ClrWdt();
   
 
   control_state = STATE_STARTUP;
