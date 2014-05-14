@@ -39,6 +39,9 @@
 #define PIN_STEP_CLOCKWISE            _RB5
 #define ILL_STEP_PIN_ACTIVE           1
 
+#define PIN_SAMPLE_ANALOG_INPUT       _RB8
+#define ILL_SAMPLE_NOW                1
+
 
 // ------------ DIGITAL OUTPUT PINS ---------------------
 
@@ -76,7 +79,7 @@ typedef struct {
 extern unsigned char control_state;
 extern unsigned int prf_counter;
 extern unsigned int pulse_frequency;
-extern unsigned char software_auto_zero;
+extern unsigned char auto_zero_requested;
 extern TYPE_AFC_DATA afc_data;
 
 //extern _prog_addressT FLASH_address_afc_config;

@@ -198,7 +198,7 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_DO_POSITION_AUTO_ZERO:
-      software_auto_zero = 1;
+      auto_zero_requested = 1;
       break;
 
     case CMD_READ_EEPROM_REGISTER:

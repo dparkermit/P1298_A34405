@@ -47,7 +47,7 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
    Resource Usage
   
    INT0 - Trigger Input
-   INT2 - Motor Overcurrent
+   INT2 - DISABLED -- Motor Overcurrent
 
    PWM_SPECIAL_EVENT_TRIGGER - Used to generate current waveforms
 
@@ -67,18 +67,29 @@ TYPE_AFC_DATA afc_data;
 unsigned char control_state;
 unsigned int prf_counter;
 unsigned int pulse_frequency;
-unsigned char software_auto_zero;
+unsigned char auto_zero_requested;
 
 
 // Local Variables and Function Prototypes
 unsigned char manual_control_ccw_pulse_input_ready;
 unsigned char manual_control_cw_pulse_input_ready;
+unsigned char pin_sample_analog_input_ready;
 unsigned char four_second_counter = 0;
 
 #define LINAC_COOLDOWN_FACTIONAL_MULTIPLIER  55000
 
 void DoSystemCooldown(void);
 
+
+
+void UpdateAnalogOutput();
+void DoAnalogInputSample();
+unsigned char ConvertParameterInput(void);
+
+
+
+
+void DoAnalogInputSample(void);
 
 void DoAFC(void);
 
@@ -155,13 +166,13 @@ void DoStateMachine(void) {
 
 
   case STATE_WAIT_FOR_AUTO_ZERO:
-    software_auto_zero = 0;
+    auto_zero_requested = 0;
     while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
       DoSerialCommand();
       ClrWdt();
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
-      } else if (software_auto_zero) {
+      } else if (auto_zero_requested) {
 	control_state = STATE_MOTOR_ZERO;
       }
     }
@@ -173,7 +184,7 @@ void DoStateMachine(void) {
     afc_motor.min_position = 0;
     afc_motor.current_position = afc_motor.max_position;
     afc_motor.target_position = afc_motor.min_position;
-    software_auto_zero = 0;
+    auto_zero_requested = 0;
     while (control_state == STATE_MOTOR_ZERO) {
       DoSerialCommand();
       ClrWdt();
@@ -216,7 +227,7 @@ void DoStateMachine(void) {
     
     
   case STATE_MANUAL_MODE:
-    software_auto_zero = 0;
+    auto_zero_requested = 0;
     while (control_state == STATE_MANUAL_MODE) {
       ClrWdt();
       DoSerialCommand();
@@ -244,30 +255,25 @@ void DoStateMachine(void) {
 	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, 1);
       }
 
+      // Look for a pulse on the sample pin
+      if (PIN_SAMPLE_ANALOG_INPUT != ILL_SAMPLE_NOW) {
+	pin_sample_analog_input_ready = 1;
+      }
+      if (pin_sample_analog_input_ready && (PIN_SAMPLE_ANALOG_INPUT == ILL_SAMPLE_NOW)) {
+	pin_sample_analog_input_ready = 0;
+	DoAnalogInputSample();
+      }
+      
       // Change state if needed
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
-      } else if (software_auto_zero) {
+      } else if (auto_zero_requested) {
 	control_state = STATE_MOTOR_ZERO;
       } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
 	control_state = STATE_RESET;
       }  
     }
     break;
-
-    /*
-  case STATE_SOFTWARE_CONTROL:
-    while (control_state == STATE_SOFTWARE_CONTROL) {
-      DoSerialCommand();
-      ClrWdt();
-      if (FaultCheck()) {
-	control_state = STATE_FAULT;
-      } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
-	control_state = STATE_RESET;
-      } 
-    }
-    break;
-    */
 
   case STATE_AFC_PULSING:
     afc_data.pulses_on = 0;
@@ -353,11 +359,12 @@ void InitPeripherals(void){
 	
   /* Set up external INT2 */
   // This is the overcurrent interrupt
-  _INT2IF = 0;		// Clear Interrupt flag
-  _INT2IE = 1;		// Enable INT2 Interrupt
-  _INT2EP = 1; 	        // Interrupt on falling edge
-  _INT2IP = 6;		// Set interrupt to second highest priority
-	
+  /*
+    _INT2IF = 0;		// Clear Interrupt flag
+    _INT2IE = 1;		// Enable INT2 Interrupt
+    _INT2EP = 1; 	        // Interrupt on falling edge
+    _INT2IP = 6;		// Set interrupt to second highest priority
+  */	
 
   // Configure T2 Interrupt.  This is used to time motor steps
   _T2IF = 0;
@@ -402,21 +409,21 @@ void InitPeripherals(void){
   
   PR2 = T2_PERIOD_VALUE;  
   T2CON = T2_CONFIG_VALUE;
-
+  
   
   /* 
      --- UART 1 setup ---
      See uart.h and Microchip documentation for more information about the condfiguration
      
   */
-  #define UART1_BAUDRATE             303000        // U1 Baud Rate
+#define UART1_BAUDRATE             303000        // U1 Baud Rate
   //#define UART1_BAUDRATE             9600
 #define A35997_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_RX_TX & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_UXRX_IDLE_ONE & UART_BRGH_SIXTEEN & UART_NO_PAR_8BIT & UART_1STOPBIT)
   //#define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_PIN_NORMAL & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
 #define A35997_U1STA_VALUE         (UART_INT_TX & UART_TX_ENABLE & UART_INT_RX_CHAR & UART_ADR_DETECT_DIS)
 #define A35997_U1BRG_VALUE         (unsigned int)(((FCY/UART1_BAUDRATE)/16)-1)
   
-
+  
   
   // Initialize the UART
   
@@ -478,7 +485,7 @@ void InitPeripherals(void){
   
   ResetI2C();
 
-  software_auto_zero = 0;
+  auto_zero_requested = 0;
   prf_counter = 0;
 
 
@@ -852,34 +859,10 @@ void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 
   _T1IF = 0;
 
-  // Update the feedback to the control board.
-  /*
-    Based on the value of the spare analog input (adc_parameter_input) we return different data on the DAC
-    
-    adc_parameter_input = 0,  0,      0     -> 6553   = Return Motor Position        (voltage scaling = ???)
-    adc_parameter_input = 1V, 13107,  6554  -> 13107  = Return Simga Reading         (voltage scaling = ???)
-    adc_parameter_input = 2V, 26214,  13108 -> 32767  = Return Delta Reading
-    adc_parameter_input = 3V, 39321,  32768 -> 45874  = Return Pulse Rate Reading    (voltage scaling = ???)
-    adc_parameter_input = 4V, 53428,  45785 -> 58981  = N/A Returns 0x0000
-    adc_parameter_input = 5V, 65535,  58982 -> 65535  = N/A Returns 0x0000
-  */
-  
-  if (adc_parameter_input <= 6553) {
-    U24_MCP4725.data_12_bit = (afc_motor.current_position << 2);
-  } else if (adc_parameter_input <= 13107) {
-    U24_MCP4725.data_12_bit = afc_data.sigma_data << 2;
-  } else if (adc_parameter_input <= 32767) {
-    U24_MCP4725.data_12_bit = afc_data.delta_data << 2;
-  } else if (adc_parameter_input <= 45874) {
-    U24_MCP4725.data_12_bit = (pulse_frequency << 2);
-  } else if (adc_parameter_input <= 58981) {
-    U24_MCP4725.data_12_bit = 0x0000;
-  } else {
-    U24_MCP4725.data_12_bit = 0x0000;
-  }
-
-  MCP4725UpdateFast(&U24_MCP4725);
-
+  // Schedule an Update the feedback to the control board.
+  //do_analog_update = 1;  // don't write to the I2C bus durring an interrupt.  That can perform indetermintly if something else is writting to the I2C bus at the time the interrupt is called
+  // DPARKER do not do I2c stuff in interrupt
+  UpdateAnalogOutput();
 
   // Calculate PRF
   four_second_counter++;
@@ -897,6 +880,138 @@ void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
   }
 }
 
+
+#define PARAMETER_MOTOR_POSITION          0
+#define PARAMETER_HOME_POSITION           1
+#define PARAMETER_AFC_OFFSET              2
+#define PARAMETER_PRF                     3
+#define PARAMETER_UNUSED                  4
+#define PARAMETER_AUTO_ZERO               5
+
+
+
+
+
+unsigned char ConvertParameterInput(void) {
+  /*
+    Based on the value of the spare analog input (adc_parameter_input) we select a different parameter
+    
+    adc_parameter_input = 0,  0,      0     -> 6553   = Select Motor Position        0V = Position 0, 5V = Position 1024, 4 LSB Per Position
+    adc_parameter_input = 1V, 13107,  6554  -> 13107  = Select Home Poisiton         0V = Position 0, 5V = Position 1024, 4 LSB Per Position
+    adc_parameter_input = 2V, 26214,  13108 -> 32767  = Select AFC Offset            0V = -128, 2.5V = 0, 5V = 127, 16 LSB Per Position        
+    adc_parameter_input = 3V, 39321,  32768 -> 45874  = Select Pulse Rate Reading    0V = 0Hz, 5V = 512Hz, 8 LSB per Hz
+    adc_parameter_input = 4V, 53428,  45785 -> 58981  = Unused                       Return Zero
+    adc_parameter_input = 5V, 65535,  58982 -> 65535  = Select Auto Zero             0V = Not in (Do Not)  Auto Zero, 5V = In (Do)Auto Zero
+    
+    adc_analog_value_input is a 16 bit number
+  */
+  
+  if (adc_parameter_input <= 6553) {
+    return PARAMETER_MOTOR_POSITION;
+  } else if (adc_parameter_input <= 13107) {
+    return PARAMETER_HOME_POSITION;
+  } else if (adc_parameter_input <= 32767) {
+    return PARAMETER_AFC_OFFSET;
+  } else if (adc_parameter_input <= 45874) {
+    return PARAMETER_PRF;
+  } else if (adc_parameter_input <= 58981) {
+    return PARAMETER_UNUSED;
+  } else {
+    return PARAMETER_AUTO_ZERO;
+  }
+}
+
+
+
+void DoAnalogInputSample(void) {
+  unsigned char parameter;
+  unsigned int error;
+  
+  parameter = ConvertParameterInput();
+
+  switch (parameter) {
+    
+  case PARAMETER_MOTOR_POSITION:
+    // Do nothing
+    break;
+    
+  case PARAMETER_HOME_POSITION:
+    afc_motor.home_position = adc_analog_value_input >> 6;
+    break;
+
+  case PARAMETER_AFC_OFFSET:
+    error = adc_analog_value_input >> 8;
+    if (error < 128) {
+      afc_data.frequency_error_offset = error;
+    } else {
+      error = 256 - error;
+      afc_data.frequency_error_offset = 0;
+      afc_data.frequency_error_offset -= error;
+    }
+    break;
+
+  case PARAMETER_PRF:
+    // Do nothing
+    break;
+
+  case PARAMETER_UNUSED:
+    // Do nothing
+    break;
+    
+  case PARAMETER_AUTO_ZERO:
+    if ((control_state == STATE_WAIT_FOR_AUTO_ZERO) || (control_state == STATE_MANUAL_MODE)) {
+      auto_zero_requested = 1;
+    }
+    break;
+  }
+}
+
+
+void UpdateAnalogOutput(void) {
+  unsigned char parameter;
+
+  parameter = ConvertParameterInput();
+  
+  switch (parameter) {
+    
+  case PARAMETER_MOTOR_POSITION:
+    U24_MCP4725.data_12_bit = (afc_motor.current_position << 2);
+    break;
+
+  case PARAMETER_HOME_POSITION:
+    U24_MCP4725.data_12_bit = afc_motor.home_position << 2;
+    break;
+
+  case PARAMETER_AFC_OFFSET:
+    if (afc_data.frequency_error_offset >= 0) {
+      U24_MCP4725.data_12_bit = afc_data.frequency_error_offset;
+      U24_MCP4725.data_12_bit = afc_data.frequency_error_offset + 128;
+      U24_MCP4725.data_12_bit <<= 4;
+    } else {
+      U24_MCP4725.data_12_bit = (afc_data.frequency_error_offset + 128);
+      U24_MCP4725.data_12_bit <<= 4;
+    }
+    break;
+
+  case PARAMETER_PRF:
+    U24_MCP4725.data_12_bit = (pulse_frequency << 2);
+    break;
+
+  case PARAMETER_UNUSED:
+    U24_MCP4725.data_12_bit = 0x0000;
+    break;
+    
+  case PARAMETER_AUTO_ZERO:
+    if ((control_state == STATE_MOTOR_ZERO) || (control_state == STATE_MOTOR_STARTUP_HOME)) {
+      U24_MCP4725.data_12_bit = 0x0FFF;
+    } else {
+      U24_MCP4725.data_12_bit = 0;
+    }
+    break;
+  }
+  
+  MCP4725UpdateFast(&U24_MCP4725);
+} 
 
 
 

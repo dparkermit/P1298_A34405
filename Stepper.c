@@ -7,7 +7,7 @@
 // Global Variables
 STEPPER_MOTOR afc_motor;                         // Data structure that holds the motor parameters
 unsigned int adc_parameter_input;                // This stores the "parameter select" value
-
+unsigned int adc_analog_value_input;             // This stores the input value
 
 // LOCAL Variables
 const unsigned int PWMHighPowerTable[128] = {FULL_POWER_TABLE_VALUES};
@@ -22,7 +22,7 @@ unsigned char adc_average_counter;               // The "low speed" adc inputs (
 unsigned int adc_parameter_input_accumulator;    // This stores the data for the "parameter" input that we average
 unsigned int adc_motor_current_a_accumulator;    // This stores the data for the "motor current a" input that we average
 unsigned int adc_motor_current_b_accumulator;    // This stores the data for the "motor current b" input that we average
-unsigned int adc_home_position_accumulator;      // This stores the data for the "home position" input that we average
+unsigned int adc_analog_input_accumulator;       // This stores the data for the "analog input" input that we average
 
 
 #define DEADTIME                             (unsigned int)(DEADTIME_NANO_SECONDS/1.07)
@@ -185,18 +185,18 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
   if (adc_average_counter >= 64) {
     adc_average_counter = 0;
     adc_parameter_input = adc_parameter_input_accumulator;
+    adc_analog_value_input = adc_analog_input_accumulator;
     afc_motor.adc_motor_current_a = adc_motor_current_a_accumulator;
     afc_motor.adc_motor_current_b = adc_motor_current_b_accumulator;
-    //afc_motor.home_position = adc_home_position_accumulator >> 5;  DPARKER - Set HOme position in software for now
     adc_parameter_input_accumulator = 0;
     adc_motor_current_a_accumulator = 0;
     adc_motor_current_b_accumulator = 0;
-    adc_home_position_accumulator = 0;
+    adc_analog_input_accumulator = 0;
   }
-  _SWTRG1 = 0;  // Trigger conversion on motor currents
-  _SWTRG5 = 0;  // Trigger conversion on parameter input
-  _SWTRG4 = 0;  // Trigger conversion on Home input
-  adc_home_position_accumulator += ADCBUF9;
+  _SWTRG1 = 0;  // Clear Trigger conversion on motor currents
+  _SWTRG5 = 0;  // Clear Trigger conversion on parameter input
+  _SWTRG4 = 0;  // Clear Trigger conversion on analog input
+  adc_analog_input_accumulator += ADCBUF9;
   adc_parameter_input_accumulator += ADCBUF11;
   adc_motor_current_a_accumulator += ADCBUF2;
   adc_motor_current_b_accumulator += ADCBUF3;
@@ -322,15 +322,18 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
 *
 * Note:		None
 *******************************************************************************/
-void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
+/*
+  void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
   // Shutdown the PWM and save the fault
   // Active the override regisiters (set to zero in the configuration)
+  
   _INT2IF = 0;
   
   IOCON1 = PWM_IOCON_VALUE_OVERRIDE;
   IOCON2 = PWM_IOCON_VALUE_OVERRIDE;
   IOCON3 = PWM_IOCON_VALUE_OVERRIDE;
   IOCON4 = PWM_IOCON_VALUE_OVERRIDE;
- 
+  
   // DPARKER need to save that there was a fault somehow so that we can move to fault state
-}
+  }
+*/

@@ -68,5 +68,6 @@ extern STEPPER_MOTOR afc_motor;
 extern unsigned int adc_parameter_input;
 extern unsigned int adc_motor_current_a;
 extern unsigned int adc_motor_current_b;
+extern unsigned int adc_analog_value_input;
 
 #endif
