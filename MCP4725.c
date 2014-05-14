@@ -3,9 +3,6 @@
 #include "Main.h"
 
 
-MCP4725 U24_MCP4725;
-
-
 
 #define MCP4725_POWER_DOWN_OFF  0b00000000
 #define MCP4725_POWER_DOWN_1K   0b00010000

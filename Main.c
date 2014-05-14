@@ -5,7 +5,6 @@
 #include "Serial_A34405.h"
 #include "MCP4725.h"
 #include "tables.h"
-
  
 #define NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  128
 
@@ -16,7 +15,9 @@
 
 #define FREQUENCY_ERROR_SLOW_THRESHOLD         20
 
+MCP4725 U24_MCP4725;
 
+M24LC64F U23_M24LC64F;
 
 #define LINAC_COOLDOWN_OFF_TIME                10  // 1 seconds
 
@@ -24,7 +25,8 @@
 
 #define COOL_DOWN_TABLE_MAX_INDEX              511 // .8 second units to 408 seconds 
 
-const unsigned int CoolDownTable[512] = {COOL_DOWN_TABLE_VALUES};
+//const unsigned int CoolDownTable[512] = {COOL_DOWN_TABLE_VALUES};
+const unsigned int CoolDownTable[128] = {};
 
 
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
@@ -170,6 +172,17 @@ void DoStateMachine(void) {
     while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
       DoSerialCommand();
       ClrWdt();
+
+
+      // Look for a pulse on the sample pin
+      if (PIN_SAMPLE_ANALOG_INPUT != ILL_SAMPLE_NOW) {
+	pin_sample_analog_input_ready = 1;
+      }
+      if (pin_sample_analog_input_ready && (PIN_SAMPLE_ANALOG_INPUT == ILL_SAMPLE_NOW)) {
+	pin_sample_analog_input_ready = 0;
+	DoAnalogInputSample();
+      }
+
       if (FaultCheck()) {
 	control_state = STATE_FAULT;
       } else if (auto_zero_requested) {
@@ -327,8 +340,11 @@ void DoStateMachine(void) {
   }
 }
 
+unsigned int dparker_temp;
+
   
 void InitPeripherals(void){
+
   PIN_SAMPLE_TRIGGER = !OLL_TRIGGER_SH;
   PIN_BRIDGE_POWER_RELAY = !OLL_BRIDGE_POWER_RELAY_CLOSED;
   
@@ -483,6 +499,10 @@ void InitPeripherals(void){
 
   SetupMCP4725(&U24_MCP4725);
   
+
+  U23_M24LC64F.address = M24LC64F_ADDRESS_0;
+  U23_M24LC64F.i2c_port = 0;
+
   ResetI2C();
 
   auto_zero_requested = 0;
@@ -491,6 +511,14 @@ void InitPeripherals(void){
 
   //afc_data.frequency_error_offset = afc_config_ram_copy[4]; // DPARKER add defined locations  
   afc_data.frequency_error_offset = 0;
+  
+
+  dparker_temp = M24LC64FReadWord(&U23_M24LC64F, 2);
+  afc_motor.home_position = dparker_temp;
+  Nop();
+  Nop();
+  Nop();
+  
   
 }    
 
@@ -937,14 +965,19 @@ void DoAnalogInputSample(void) {
     
   case PARAMETER_HOME_POSITION:
     afc_motor.home_position = adc_analog_value_input >> 6;
+    dparker_temp = afc_motor.home_position;
+    Nop();
+    Nop();
+    Nop();
+    M24LC64FWriteWord(&U23_M24LC64F, 2, dparker_temp);
     break;
 
   case PARAMETER_AFC_OFFSET:
     error = adc_analog_value_input >> 8;
-    if (error < 128) {
-      afc_data.frequency_error_offset = error;
+    if (error >= 128) {
+      afc_data.frequency_error_offset = (error-128);
     } else {
-      error = 256 - error;
+      error = 127 - error;
       afc_data.frequency_error_offset = 0;
       afc_data.frequency_error_offset -= error;
     }

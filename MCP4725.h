@@ -11,8 +11,6 @@ typedef struct {
 #define MCP4725_ADDRESS_A0_0    0b11000000
 #define MCP4725_ADDRESS_A0_1    0b11000010
 
-extern MCP4725 U24_MCP4725;
-
 void SetupMCP4725(MCP4725* ptr_MCP4725);
 
 void MCP4725UpdateFast(MCP4725* ptr_MCP4725);

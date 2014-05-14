@@ -4,6 +4,7 @@
 #include "Stepper.h"
 #include "Version_A34405.h"
 
+
 /*
   Serial Commands
 
@@ -245,6 +246,8 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_SET_HOME_POSITION:
+      // DPARKER, you can't do this in AFC mode because it will freeze the motor so much sure you are in manual mode before responding to this command
+      M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, data_word);
       afc_motor.home_position = data_word;
       break;
 
@@ -257,10 +260,13 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_OVERCURRENT_SHUTDOWN_TEST:
-      IOCON1 = 0b0000001100000000;
-      IOCON2 = 0b0000001100000000;
-      IOCON3 = 0b0000001100000000;
-      IOCON4 = 0b0000001100000000;  
+      /*
+	// DO NOTHING
+	IOCON1 = 0b0000001100000000;
+	IOCON2 = 0b0000001100000000;
+	IOCON3 = 0b0000001100000000;
+	IOCON4 = 0b0000001100000000;
+      */
       break;
 
     }

@@ -119,7 +119,6 @@ void InitPWM(void) {
   
   afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
   afc_motor.min_position = MOTOR_MINIMUM_POSITION;
-  afc_motor.home_position = MOTOR_DEFAULT_HOME_POSITION;
   afc_motor.target_position = afc_motor.home_position;
   afc_motor.current_position = afc_motor.home_position;
 }

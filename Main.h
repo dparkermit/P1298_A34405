@@ -1,6 +1,7 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 #include <libpic30.h>
+#include "M24LC64F.h"
 
 
 /********************** dsPIC parameters *******************************/
@@ -39,7 +40,8 @@
 #define PIN_STEP_CLOCKWISE            _RB5
 #define ILL_STEP_PIN_ACTIVE           1
 
-#define PIN_SAMPLE_ANALOG_INPUT       _RB8
+//#define PIN_SAMPLE_ANALOG_INPUT       _RB8
+#define PIN_SAMPLE_ANALOG_INPUT       _RB4
 #define ILL_SAMPLE_NOW                1
 
 
@@ -82,8 +84,14 @@ extern unsigned int pulse_frequency;
 extern unsigned char auto_zero_requested;
 extern TYPE_AFC_DATA afc_data;
 
+extern M24LC64F U23_M24LC64F;
+
+
 //extern _prog_addressT FLASH_address_afc_config;
 //extern int afc_config_ram_copy[16];
+
+#define EEPROM_REGISTER_HOME_POSITION 1
+
 
 
 #endif

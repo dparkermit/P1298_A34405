@@ -32,9 +32,6 @@
 */
 
 // ---------- Configure For the M24LC64F Addresses  ----------------- //
-#define M24LC64F_READ_CONTROL_BIT          0b00000001
-#define M24LC64F_WRITE_CONTROL_BIT         0b00000000
-
 #define M24LC64F_ADDRESS_0                 0b10100000
 #define M24LC64F_ADDRESS_1                 0b10100010
 #define M24LC64F_ADDRESS_2                 0b10100100
@@ -44,20 +41,13 @@
 #define M24LC64F_ADDRESS_6                 0b10101100
 #define M24LC64F_ADDRESS_7                 0b10101110
 
-#define M24LC64F_MAX_16BIT_REGISTERS       0x1F3F
-#define M24LC64F_WP_PIN_WRITE_ENABLE       0
-
 
 typedef struct {
   unsigned char address;
   unsigned char i2c_port;
 } M24LC64F;
 
-//void M24LC64FWriteWord(unsigned int register_location, unsigned int data, unsigned char address);
-
 void M24LC64FWriteWord(M24LC64F* prt_M24LC64F, unsigned int register_location, unsigned int data);
-
-//unsigned int M24LC64FReadWord(unsigned int register_location, unsigned char address);
 
 unsigned int M24LC64FReadWord(M24LC64F* prt_M24LC64F, unsigned int register_location);
 
