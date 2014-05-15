@@ -90,7 +90,8 @@ extern M24LC64F U23_M24LC64F;
 //extern _prog_addressT FLASH_address_afc_config;
 //extern int afc_config_ram_copy[16];
 
-#define EEPROM_REGISTER_HOME_POSITION 1
+#define EEPROM_REGISTER_HOME_POSITION    1
+#define EEPROM_REGISTER_ERROR_OFFSET     2
 
 
 

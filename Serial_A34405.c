@@ -229,24 +229,9 @@ void ExecuteCommand(void) {
 	afc_data.frequency_error_offset = 0;
 	afc_data.frequency_error_offset -= data_word;
       }
-      //afc_config_ram_copy[4] = afc_data.frequency_error_offset;  // DPARKER add defined locations, can not use first 4 bytes or CPU will crash
-      //_wait_eedata();
-     
-      Nop();
-      Nop();
-      Nop();
-      //_erase_flash(FLASH_address_afc_config);
-      //_wait_eedata();
-      //__delay32(2900000);
-      ClrWdt();
-      Nop();
-      Nop();
-      Nop();
-      //_write_flash16(FLASH_address_afc_config, afc_config_ram_copy);
       break;
 
     case CMD_SET_HOME_POSITION:
-      // DPARKER, you can't do this in AFC mode because it will freeze the motor so much sure you are in manual mode before responding to this command
       M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, data_word);
       afc_motor.home_position = data_word;
       break;

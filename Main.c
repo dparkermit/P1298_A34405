@@ -26,7 +26,8 @@ M24LC64F U23_M24LC64F;
 #define COOL_DOWN_TABLE_MAX_INDEX              511 // .8 second units to 408 seconds 
 
 //const unsigned int CoolDownTable[512] = {COOL_DOWN_TABLE_VALUES};
-const unsigned int CoolDownTable[128] = {};
+//const unsigned int CoolDownTable[24] = {};
+const unsigned int dan_table_name[2][24] = {{DAN_TABLE_NAME_ROW_1_VALUES}, {DAN_TABLE_NAME_ROW_2_VALUES}};
 
 
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
@@ -513,12 +514,15 @@ void InitPeripherals(void){
   afc_data.frequency_error_offset = 0;
   
 
-  dparker_temp = M24LC64FReadWord(&U23_M24LC64F, 2);
-  afc_motor.home_position = dparker_temp;
-  Nop();
-  Nop();
-  Nop();
-  
+  afc_motor.home_position = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION);
+  if (afc_motor.home_position >= afc_motor.max_position) {
+    afc_motor.home_position = afc_motor.max_position;
+  }
+  if (afc_motor.home_position <= afc_motor.min_position) {
+    afc_motor.home_position = afc_motor.min_position;
+  }
+
+  afc_data.frequency_error_offset = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET);
   
 }    
 
@@ -532,10 +536,13 @@ void InitPeripherals(void){
 */
 void DoSystemCooldown(void) {
   // DPARKER figure out how to make this work with negative number for "distance from home at stop" 
+
+  /*
   unsigned int time_index;
   unsigned int multiplier;
   unsigned long result;
   unsigned int remainder;
+
   if (afc_data.time_off_100ms_units >= LINAC_COOLDOWN_OFF_TIME) {
     time_index = (afc_data.time_off_100ms_units >> 3);  // Time index will be in .8 second units
     if (time_index >= COOL_DOWN_TABLE_MAX_INDEX) {
@@ -552,7 +559,39 @@ void DoSystemCooldown(void) {
     SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, (afc_motor.home_position - result));
   }
   
+  */
+    
+  unsigned char index;
+  unsigned int off_time;
+  unsigned int remainder;
+  unsigned long temp;
+  
 
+  off_time = afc_data.time_off_100ms_units;
+  
+  if (off_time >= dan_table_name[0][23]) {
+    temp = 0;
+  } else {
+    index = 0;
+    while ((index < 22) && (off_time >= dan_table_name[0][index])) {
+      index++;
+    }
+    // calculate the fractional multiplier
+    temp = dan_table_name[1][index] - dan_table_name[1][index+1];
+    temp *= (dan_table_name[0][index+1]- off_time);
+    temp /= (dan_table_name[0][index+1]- dan_table_name[0][index]);
+    temp += dan_table_name[1][index+1];
+    
+    // this is now our fractional multiplier
+    temp *= afc_data.distance_from_home_at_stop;
+    remainder = temp & 0x0000FFFF;
+    temp >>= 16;
+    if (remainder >= 0x8000) {
+      temp++;
+    }
+  }
+  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, (afc_motor.home_position - temp));
+    
 
   /*
   signed long temperature_offset;
@@ -960,27 +999,27 @@ void DoAnalogInputSample(void) {
   switch (parameter) {
     
   case PARAMETER_MOTOR_POSITION:
-    // Do nothing
+    // Move the motor to that position
+    afc_motor.target_position = adc_analog_value_input >> 6;
     break;
     
   case PARAMETER_HOME_POSITION:
+    // Set the home position and store to EEPRORM
     afc_motor.home_position = adc_analog_value_input >> 6;
-    dparker_temp = afc_motor.home_position;
-    Nop();
-    Nop();
-    Nop();
-    M24LC64FWriteWord(&U23_M24LC64F, 2, dparker_temp);
+    M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, afc_motor.home_position);
     break;
 
   case PARAMETER_AFC_OFFSET:
+    // Set the Frequency Error offset and store to EEPROM
     error = adc_analog_value_input >> 8;
     if (error >= 128) {
       afc_data.frequency_error_offset = (error-128);
     } else {
-      error = 127 - error;
+      error = 128 - error;
       afc_data.frequency_error_offset = 0;
       afc_data.frequency_error_offset -= error;
     }
+    M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET, afc_data.frequency_error_offset);
     break;
 
   case PARAMETER_PRF:
@@ -992,12 +1031,14 @@ void DoAnalogInputSample(void) {
     break;
     
   case PARAMETER_AUTO_ZERO:
-    if ((control_state == STATE_WAIT_FOR_AUTO_ZERO) || (control_state == STATE_MANUAL_MODE)) {
+    // Auto zero if appropriate
+    if (adc_analog_value_input >= 0x8000) {
       auto_zero_requested = 1;
     }
     break;
   }
 }
+
 
 
 void UpdateAnalogOutput(void) {
