@@ -181,21 +181,21 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_SET_TARGET_POSITION:
-      // DPARKER only activate these commands if we are in software control mode
-      // For the moment they are always active
-      SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, data_word); 
+      if ((control_state != STATE_AFC_PULSING) && (control_state != STATE_AFC_NOT_PULSING)) {
+	SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, data_word); 
+      }
       break;
 
     case CMD_MOVE_CLOCKWISE:
-      // DPARKER only activate these commands if we are in software control mode
-      // For the moment they are always active
-      SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, data_word);
+      if (control_state == STATE_MANUAL_MODE) {
+	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, data_word);
+      }
       break;
 
     case CMD_MOVE_COUNTER_CLOCKWISE:
-      // DPARKER only activate these commands if we are in software control mode
-      // For the moment they are always active
-      SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, data_word);
+      if (control_state == STATE_MANUAL_MODE) {
+	SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, data_word);
+      }
       break;
 
     case CMD_DO_POSITION_AUTO_ZERO:
@@ -203,9 +203,11 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_READ_EEPROM_REGISTER:
+      return_data_word = M24LC64FReadWord(&U23_M24LC64F, command_string.register_byte);
       break;
     
     case CMD_WRITE_EEPROM_REGISTER:
+      // DPARKER this is not implimented for now
       break;
 
     case CMD_READ_AFC_ERROR_DATA_HISTORY:
@@ -229,11 +231,12 @@ void ExecuteCommand(void) {
 	afc_data.frequency_error_offset = 0;
 	afc_data.frequency_error_offset -= data_word;
       }
+      M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET, afc_data.frequency_error_offset);
       break;
 
     case CMD_SET_HOME_POSITION:
-      M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, data_word);
       afc_motor.home_position = data_word;
+      M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, afc_motor.home_position);
       break;
 
     case CMD_DATA_LOGGING:
@@ -254,6 +257,10 @@ void ExecuteCommand(void) {
       */
       break;
 
+    case CMD_AFC_NOT_PULSING_GO_HOME:
+      afc_data.time_off_100ms_units = 0xFF00;
+      break;
+      
     }
 
   // Echo the command that was recieved back to the controller
@@ -341,6 +348,18 @@ unsigned int ReadFromRam(unsigned int ram_location) {
       data_return = pulse_frequency;
       break;
 
+    case RAM_READ_ANALOG_INPUT:
+      data_return = adc_analog_value_input;
+      break;
+
+    case RAM_READ_TIME_NOT_PULSING:
+      data_return = afc_data.time_off_100ms_units;
+      break;
+
+    case RAM_READ_AFC_DISTANCE_FROM_HOME_AT_STOP:
+      data_return = afc_data.distance_from_home_at_stop;
+      break;
+	
 
     }  
   

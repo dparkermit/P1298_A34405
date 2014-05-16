@@ -1,7 +1,26 @@
 #ifndef __MAIN_H
 #define __MAIN_H
-#include <libpic30.h>
-#include "M24LC64F.h"
+
+/* 
+   Resource Usage
+  
+   Interrupts
+   INT0 - Trigger Input
+   INT2 - NOT ACTIVE -- Motor Overcurrent
+   PWM_SPECIAL_EVENT_TRIGGER - Used to generate current waveforms
+
+
+   Hardware Resources
+
+   TMR1 - Used for general timing functions - Set to .1 second
+   TMR2 - Used to time the motor movement.  
+   ADC Module - Used to Sample AFC feedback, Motor Currents, and Interact with the PLC
+   UART1 - Used for Digital Serial Link
+   I2C - Connected to ADC and possibly EEPROM
+   
+
+*/
+
 
 
 /********************** dsPIC parameters *******************************/
@@ -62,27 +81,11 @@
 #define PIN_FAULT_OUT_1               _LATF15
 
 
-// GLOBAL DATA TYPES
-typedef struct {
-  unsigned int sigma_data;
-  unsigned int delta_data;
-  signed char frequency_error_filtered;
-  signed char frequency_error_history[16];
-  signed char frequency_error_offset;
-  unsigned char data_pointer; 
-  unsigned char trigger_complete;
-  unsigned char fast_afc_done;
-  unsigned int pulses_on;
-  unsigned int time_off_100ms_units;
-  signed int distance_from_home_at_stop;
-} TYPE_AFC_DATA;
 
 // GLOBAL VARIABLES
 extern unsigned char control_state;
-extern unsigned int prf_counter;
 extern unsigned int pulse_frequency;
 extern unsigned char auto_zero_requested;
-extern TYPE_AFC_DATA afc_data;
 
 extern M24LC64F U23_M24LC64F;
 
@@ -90,9 +93,34 @@ extern M24LC64F U23_M24LC64F;
 //extern _prog_addressT FLASH_address_afc_config;
 //extern int afc_config_ram_copy[16];
 
-#define EEPROM_REGISTER_HOME_POSITION    1
-#define EEPROM_REGISTER_ERROR_OFFSET     2
+#define EEPROM_REGISTER_HOME_POSITION     1
+#define EEPROM_REGISTER_ERROR_OFFSET      2
 
+
+
+
+#define PARAMETER_MOTOR_POSITION          0
+#define PARAMETER_HOME_POSITION           1
+#define PARAMETER_AFC_OFFSET              2
+#define PARAMETER_PRF                     3
+#define PARAMETER_UNUSED                  4
+#define PARAMETER_AUTO_ZERO               5
+
+
+// ----------------- CONFIGURE ADC ---------------- //
+
+#define ADCON_DEFAULT (ADC_MOD_DIS | ADC_IDLE_CONT | ADC_SOFT_TRIG_DIS | ADC_DATA_INT | ADC_INT_EN_2CONV | ADC_ORDER_EVEN_FST | ADC_SAMP_SEQ | ADC_PLL_EN_FADC_14)
+  
+#define ADPCFG_DEFAULT    0b1111010111110000  // AN0,AN1,AN2,AN3,AN9,AN11
+    
+#define ADCPC0_DEFAULT (ADC_AN1_0_IR_GEN_DIS | ADC_AN1_0_TRIG_INDV_SW |  ADC_AN3_2_IR_GEN_DIS   | ADC_AN3_2_TRIG_INDV_SW)
+#define ADCPC1_DEFAULT (ADC_AN5_4_IR_GEN_DIS | ADC_AN5_4_NOCONV       |  ADC_AN7_6_IR_GEN_DIS   | ADC_AN7_6_NOCONV)
+#define ADCPC2_DEFAULT (ADC_AN9_8_IR_GEN_DIS | ADC_AN9_8_TRIG_INDV_SW |  ADC_AN11_10_IR_GEN_DIS | ADC_AN11_10_TRIG_INDV_SW)
+
+// ---------------- CONFIGURE T1 --------------//
+// Setupt T1 for .1 second Interrupt
+#define T1_PERIOD_VALUE           (unsigned int)(FCY/256/10)
+#define T1_CONFIG_VALUE           0b1000000000110000   // Timer On and 8 Prescale
 
 
 #endif

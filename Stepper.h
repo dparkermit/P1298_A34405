@@ -18,8 +18,9 @@
 #define MOTOR_DEFAULT_HOME_POSITION 670        // This is the default home position that is load at boot-up.  It should be overwritten by the PLC
 
 
-#define T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
-#define T2_PERIOD_VALUE_SLOW      (unsigned int)(FCY/256/STEPS_PER_SECOND_SLOW)
+#define T2_CONFIG_VALUE                     0b1000000000110000   // Timer On and 256 Prescale
+#define AFC_MOTOR_T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND)
+#define AFC_MOTOR_T2_PERIOD_VALUE_SLOW      (unsigned int)(FCY/256/STEPS_PER_SECOND_SLOW)
 
 
 

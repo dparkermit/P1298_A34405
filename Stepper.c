@@ -66,6 +66,24 @@ unsigned int adc_analog_input_accumulator;       // This stores the data for the
 // See H File for documentation 
 void InitPWM(void) {
 
+  afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
+  afc_motor.min_position = MOTOR_MINIMUM_POSITION;
+  
+  // Load Values from EEPROM
+  afc_motor.home_position = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION);
+  if (afc_motor.home_position >= afc_motor.max_position) {
+    afc_motor.home_position = afc_motor.max_position;
+  }
+  if (afc_motor.home_position <= afc_motor.min_position) {
+    afc_motor.home_position = afc_motor.min_position;
+  }
+  
+  afc_motor.target_position = afc_motor.home_position;
+  afc_motor.current_position = afc_motor.home_position;
+  
+
+  
+
   pwm_table_index = 0;
   adc_average_counter = 0;
   adc_parameter_input_accumulator = 0;
@@ -117,10 +135,6 @@ void InitPWM(void) {
   PTCONbits.SEIEN               = 1;
   PTCONbits.PTEN                = 1;        // Enable the PWM Module  
   
-  afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
-  afc_motor.min_position = MOTOR_MINIMUM_POSITION;
-  afc_motor.target_position = afc_motor.home_position;
-  afc_motor.current_position = afc_motor.home_position;
 }
 
 

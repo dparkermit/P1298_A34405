@@ -17,6 +17,7 @@
 #define CMD_READ_MEM_LOCATION                           0x54
 #define CMD_SET_ERROR_OFFSET                            0x60
 #define CMD_DO_POSITION_AUTO_ZERO                       0x70
+#define CMD_AFC_NOT_PULSING_GO_HOME                     0x72
 #define CMD_DATA_LOGGING                                0x56
 
 
@@ -35,12 +36,15 @@
 #define RAM_READ_ADC_MOTOR_CURRENT_A                    0x32
 #define RAM_READ_ADC_MOTOR_CURRENT_B                    0x33
 #define RAM_READ_ADC_PARAMETER_INPUT                    0x3B
+#define RAM_READ_ANALOG_INPUT                           0x3C
 
 #define RAM_READ_SIGMA_DATA                             0x40
 #define RAM_READ_DELTA_DATA                             0x41
 #define RAM_READ_FREQUENCY_ERROR_FILTERED               0x42
 #define RAM_READ_FREQUENCY_ERROR_OFFSET                 0x43
 #define RAM_READ_NUMBER_PULSES_ON                       0x44
+#define RAM_READ_TIME_NOT_PULSING                       0x45
+#define RAM_READ_AFC_DISTANCE_FROM_HOME_AT_STOP         0x46
 
 #define RAM_READ_PRF                                    0x50
 
