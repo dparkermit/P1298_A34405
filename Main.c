@@ -9,13 +9,41 @@
 #include "Serial_A34405.h"
 
 
- 
 
+
+// GLOBAL Vairables
+unsigned char control_state;
+unsigned int pulse_frequency      = 0;                // This is the prf
+unsigned char auto_zero_requested = 0;                // An auto zero has been request (over PLC or serial interface).  This does not mean that an auto zero will happen though.  It must be in a state where auto zero is valid.
 MCP4725 U24_MCP4725;
-
 M24LC64F U23_M24LC64F;
 
 
+// Local Variables and Function Prototypes
+unsigned char manual_control_ccw_pulse_input_ready  = 0;   // This stores the state of the digital input so that we can detect transitions 
+unsigned char manual_control_cw_pulse_input_ready   = 0;   // This stores the state of the digital input so that we can detect transitions 
+unsigned char pin_sample_analog_input_ready         = 0;   // This stores the state of the digital input so that we can detect transitions 
+unsigned int  prf_counter                           = 0;   // We count the number of pulses over 4 seconds and then divide by 4 to get PRF - This counts the number of pulses
+unsigned char four_second_counter                   = 0;   // We count the number of pulses over 4 seconds and then divide by 4 to get PRF - This counts the time
+
+
+void DoStateMachine(void);
+void InitPeripherals(void);
+
+
+
+unsigned char ConvertParameterInput(void);
+void DoAnalogInputSample(void);
+void UpdateAnalogOutput();
+void ResetI2C(void);
+
+unsigned char FaultCheck(void);
+unsigned char FaultCheck(void) {
+  return 0;
+}
+
+
+// -------------- SET THE PIC CONFIGURATION BITS ----------------//
 _FOSCSEL(FRC_PLL);                                      /* Internal FRC oscillator with PLL */
 _FICD(ICS_PGD);                                         /* Enable Primary ICP pins */
 _FPOR(PWRT_128);
@@ -26,82 +54,12 @@ _FOSC(CSW_ON_FSCM_OFF & FRC_HI_RANGE & OSC2_CLKO);      /* Set up for internal f
 
 
 
-
-// GLOBAL Vairables
-unsigned char control_state;
-unsigned int pulse_frequency;                         // This is the prf
-unsigned char auto_zero_requested;                    // An auto zero has been request (over PLC or serial interface).  This does not mean that an auto zero will happen though.  It must be in a state where auto zero is valid.
-
-
-// Local Variables and Function Prototypes
-unsigned char manual_control_ccw_pulse_input_ready;   // This stores the state of the digital input so that we can detect transitions 
-unsigned char manual_control_cw_pulse_input_ready;    // This stores the state of the digital input so that we can detect transitions 
-unsigned char pin_sample_analog_input_ready;          // This stores the state of the digital input so that we can detect transitions 
-unsigned int  prf_counter;                            // We count the number of pulses over 4 seconds and then divide by 4 to get PRF - This counts the number of pulses
-unsigned char four_second_counter = 0;                // We count the number of pulses over 4 seconds and then divide by 4 to get PRF - This counts the time
-
-
-unsigned char ConvertParameterInput(void);
-
-void DoAnalogInputSample(void);
-
-void UpdateAnalogOutput();
-
-
-
-
-void DoStateMachine(void);
-
-void InitPeripherals(void);
-
-
-
-
-
-
-
-
-
-void ResetI2C(void);
-
-// DPARKER move this to interrupt on I2C master collision
-void ResetI2C(void) {
-  unsigned char n;
-  _I2CEN = 0; // turn off I2C module
-  _TRISG2 = 0; // Set I2C Clock Pin to output
-  n=0;
-  while (n++ <= 20) {
-    _LATG2 = 1 ;
-    __delay32(100);
-    _LATG2 = 0 ; 
-    __delay32(100);
-  }
-  _TRISG2 = 1; // Set I2C Clock Pin to input
-  _I2CEN = 1; // turn on I2C module
-}
-
-
-unsigned char FaultCheck(void);
-unsigned char FaultCheck(void) {
-  return 0;
-}
-
-
-
-
 int main (void) {
   while(OSCCONbits.LOCK!=1);          /* Wait for PLL to lock */
-  //__delay32(EEPROM_DELAY*10);         /* Wait for EEPROMs to settle */
   __delay32(30000000);
-  
-  
-  //_init_prog_address(FLASH_address_afc_config, afc_config_in_FLASH);
-  //_memcpy_p2d16(afc_config_ram_copy, FLASH_address_afc_config, _FLASH_ROW);
-  //ClrWdt();
-  
+  ClrWdt();
 
   control_state = STATE_STARTUP;
-  
   while(1) {
     DoStateMachine();
   }
@@ -109,9 +67,8 @@ int main (void) {
 
 
 void DoStateMachine(void) {
-
   switch (control_state) {
-    
+
 
   case STATE_STARTUP:
     ClrWdt();
@@ -126,8 +83,6 @@ void DoStateMachine(void) {
     while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
       DoSerialCommand();
       ClrWdt();
-
-
       // Look for a pulse on the sample pin
       if (PIN_SAMPLE_ANALOG_INPUT != ILL_SAMPLE_NOW) {
 	pin_sample_analog_input_ready = 1;
@@ -163,6 +118,7 @@ void DoStateMachine(void) {
     }
     break;
 
+
   case STATE_MOTOR_STARTUP_HOME:
     afc_motor.current_position = 0;
     afc_motor.target_position = afc_motor.home_position;
@@ -176,6 +132,7 @@ void DoStateMachine(void) {
       }
     }
     break;
+
     
   case STATE_RESET:
     afc_motor.min_position = MOTOR_MINIMUM_POSITION;
@@ -289,12 +246,8 @@ void DoStateMachine(void) {
       DoSerialCommand();
     }
     break;
-    
-    
   }
 }
-
-unsigned int dparker_temp;
 
   
 void InitPeripherals(void){
@@ -407,6 +360,8 @@ void InitPeripherals(void){
   ADCPC2 = ADCPC2_DEFAULT;
   _ADON = 1;
 
+
+  // Configure external ADC
   U24_MCP4725.address = MCP4725_ADDRESS_A0_0;
   U24_MCP4725.i2c_port = 0;
   U24_MCP4725.data_12_bit = 0x0000;
@@ -414,26 +369,16 @@ void InitPeripherals(void){
 
   SetupMCP4725(&U24_MCP4725);
   
-
+  // Configure external EEPROM
   U23_M24LC64F.address = M24LC64F_ADDRESS_0;
   U23_M24LC64F.i2c_port = 0;
-
-  ResetI2C();
-
-  auto_zero_requested = 0;
-  prf_counter = 0;
-
-
-  // DPARKER what values need to be pre-loaded at startup
-  afc_data.frequency_error_offset = 0;
   
+
 
   afc_data.frequency_error_offset = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET);
 
-
-
-
   
+
 }    
 
 
@@ -530,31 +475,6 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
 }
 
 
-// This is set up for .1 Second Timer
-void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
-
-  _T1IF = 0;
-
-  // Schedule an Update the feedback to the control board.
-  //do_analog_update = 1;  // don't write to the I2C bus durring an interrupt.  That can perform indetermintly if something else is writting to the I2C bus at the time the interrupt is called
-  // DPARKER do not do I2c stuff in interrupt
-  UpdateAnalogOutput();
-
-  // Calculate PRF
-  four_second_counter++;
-  if (four_second_counter >= 40) {
-    PIN_FAULT_OUT_1 = !PIN_FAULT_OUT_1;
-    four_second_counter = 0;
-    pulse_frequency = prf_counter >> 2;
-    prf_counter = 0;
-  }
-
-  // Update the not pulsing counter
-  afc_data.time_off_100ms_units++;
-  if (afc_data.time_off_100ms_units >= 0xFF00) {
-    afc_data.time_off_100ms_units = 0xFF00;
-  }
-}
 
 
 unsigned char ConvertParameterInput(void) {
@@ -638,7 +558,6 @@ void DoAnalogInputSample(void) {
 }
 
 
-
 void UpdateAnalogOutput(void) {
   unsigned char parameter;
 
@@ -684,6 +603,55 @@ void UpdateAnalogOutput(void) {
   
   MCP4725UpdateFast(&U24_MCP4725);
 } 
+
+
+void ResetI2C(void) {
+  unsigned char n;
+  _I2CEN = 0; // turn off I2C module
+  _TRISG2 = 0; // Set I2C Clock Pin to output
+  n=0;
+  while (n++ <= 20) {
+    _LATG2 = 1 ;
+    __delay32(100);
+    _LATG2 = 0 ; 
+    __delay32(100);
+  }
+  _TRISG2 = 1; // Set I2C Clock Pin to input
+  _I2CEN = 1; // turn on I2C module
+}
+
+
+
+// This is set up for .1 Second Timer
+void  __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
+  _T1IF = 0;
+
+  // Schedule an Update the feedback to the control board.
+  //do_analog_update = 1;  // don't write to the I2C bus durring an interrupt.  That can perform indetermintly if something else is writting to the I2C bus at the time the interrupt is called
+  // DPARKER do not do I2c stuff in interrupt
+  UpdateAnalogOutput();
+
+  // Check for Bus collision on the I2C bus
+  if (_BCL) {
+    ResetI2C();
+    _BCL = 0;
+  }
+
+  // Calculate PRF
+  four_second_counter++;
+  if (four_second_counter >= 40) {
+    PIN_FAULT_OUT_1 = !PIN_FAULT_OUT_1;
+    four_second_counter = 0;
+    pulse_frequency = prf_counter >> 2;
+    prf_counter = 0;
+  }
+
+  // Update the not pulsing counter
+  afc_data.time_off_100ms_units++;
+  if (afc_data.time_off_100ms_units >= 0xFF00) {
+    afc_data.time_off_100ms_units = 0xFF00;
+  }
+}
 
 
 

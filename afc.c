@@ -15,7 +15,6 @@
 
 
 
-#define LINAC_COOLDOWN_OFF_TIME                10  // 1 seconds
 
 
 const unsigned int CooldownTable[2][24] = {{COOLDOWN_TABLE_ROW_1_VALUES}, {COOLDOWN_TABLE_ROW_2_VALUES}};
@@ -182,6 +181,7 @@ void DoSystemCooldown(void) {
     temp += CooldownTable[1][index+1];
     
     // temp is now our fractional multiplier
+    // DPARKER - the rounding will not work properly if Finish Position > Target Position.  I am ok because this will never happen in real life.
     temp *= afc_data.distance_from_home_at_stop;
     remainder = temp & 0x0000FFFF;
     temp >>= 16;

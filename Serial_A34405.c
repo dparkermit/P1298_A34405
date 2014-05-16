@@ -2,6 +2,7 @@
 #include "Serial_A34405.h"
 #include "Main.h"
 #include "Stepper.h"
+#include "afc.c"
 #include "Version_A34405.h"
 
 
@@ -258,7 +259,9 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_AFC_NOT_PULSING_GO_HOME:
-      afc_data.time_off_100ms_units = 0xFF00;
+      if (control_state == STATE_AFC_NOT_PULSING) {
+	afc_data.time_off_100ms_units = 0xFF00;
+      }
       break;
       
     }
@@ -350,6 +353,10 @@ unsigned int ReadFromRam(unsigned int ram_location) {
 
     case RAM_READ_ANALOG_INPUT:
       data_return = adc_analog_value_input;
+      break;
+
+    case RAM_READ_ANALOG_OUTPUT:
+      data_return = U24_MCP4725.data_12_bit;
       break;
 
     case RAM_READ_TIME_NOT_PULSING:

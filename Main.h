@@ -1,6 +1,7 @@
 #ifndef __MAIN_H
 #define __MAIN_H
-
+#include "M24LC64F.h"
+#include "MCP4725.h"
 /* 
    Resource Usage
   
@@ -59,8 +60,8 @@
 #define PIN_STEP_CLOCKWISE            _RB5
 #define ILL_STEP_PIN_ACTIVE           1
 
-//#define PIN_SAMPLE_ANALOG_INPUT       _RB8
-#define PIN_SAMPLE_ANALOG_INPUT       _RB4
+#define PIN_SAMPLE_ANALOG_INPUT       _RB8
+//#define PIN_SAMPLE_ANALOG_INPUT       _RB4  DPARKER used this because we test fixture does not have the output to _RB8 mapped
 #define ILL_SAMPLE_NOW                1
 
 
@@ -88,7 +89,7 @@ extern unsigned int pulse_frequency;
 extern unsigned char auto_zero_requested;
 
 extern M24LC64F U23_M24LC64F;
-
+extern MCP4725 U24_MCP4725;
 
 //extern _prog_addressT FLASH_address_afc_config;
 //extern int afc_config_ram_copy[16];

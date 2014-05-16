@@ -2,6 +2,7 @@
 #include "Stepper.h"
 #include "Tables.h"
 #include "Main.h"
+#include "afc.h"
 
 
 // Global Variables
@@ -229,10 +230,10 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
       // We know that we are moving the motor slowly, so slow down the motor step transitions to damp out osciallations
       // DPARKER, it would probably be safest to limit the motor movement interrupt here as well (or do both in the same location)
       pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO_SLOW_MODE;
-      PR2 = T2_PERIOD_VALUE_SLOW;
+      PR2 = AFC_MOTOR_T2_PERIOD_VALUE_SLOW;
     } else {
       pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO;
-      PR2 = T2_PERIOD_VALUE;
+      PR2 = AFC_MOTOR_T2_PERIOD_VALUE;
     }
     if (pwm_microstep_counter >= pwm_slow_down_value) {
       pwm_microstep_counter = 0;

@@ -2,6 +2,9 @@
 #define __AFC_H
 
 
+#define LINAC_COOLDOWN_OFF_TIME                10  // 1 seconds
+
+
 
 // GLOBAL DATA TYPES
 typedef struct {

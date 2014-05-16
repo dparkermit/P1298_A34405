@@ -37,6 +37,8 @@
 #define RAM_READ_ADC_MOTOR_CURRENT_B                    0x33
 #define RAM_READ_ADC_PARAMETER_INPUT                    0x3B
 #define RAM_READ_ANALOG_INPUT                           0x3C
+#define RAM_READ_ANALOG_OUTPUT                          0x3D
+
 
 #define RAM_READ_SIGMA_DATA                             0x40
 #define RAM_READ_DELTA_DATA                             0x41
