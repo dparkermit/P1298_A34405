@@ -263,6 +263,16 @@ void ExecuteCommand(void) {
 	afc_data.time_off_100ms_units = 0xFF00;
       }
       break;
+
+    case CMD_MK_SET_SPEED:
+      mk_test_pr2_register = data_word;
+      break;
+      
+
+    case CMD_MK_SET_MOTOR_DAMP:
+      mk_test_pwm_slow_down_value = data_word;
+      break;
+
       
     }
 

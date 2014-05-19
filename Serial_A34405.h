@@ -19,6 +19,8 @@
 #define CMD_DO_POSITION_AUTO_ZERO                       0x70
 #define CMD_AFC_NOT_PULSING_GO_HOME                     0x72
 #define CMD_DATA_LOGGING                                0x56
+#define CMD_MK_SET_SPEED                                0x80
+#define CMD_MK_SET_MOTOR_DAMP                           0x81
 
 
 // RAM Locations

@@ -10,6 +10,10 @@ STEPPER_MOTOR afc_motor;                         // Data structure that holds th
 unsigned int adc_parameter_input;                // This stores the "parameter select" value
 unsigned int adc_analog_value_input;             // This stores the input value
 
+unsigned int mk_test_pr2_register;
+unsigned int mk_test_pwm_slow_down_value;
+
+
 // LOCAL Variables
 const unsigned int PWMHighPowerTable[128] = {FULL_POWER_TABLE_VALUES};
 const unsigned int PWMLowPowerTable[128] = {LOW_POWER_TABLE_VALUES};
@@ -83,7 +87,7 @@ void InitPWM(void) {
   afc_motor.current_position = afc_motor.home_position;
   
 
-  
+  mk_test_pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO;
 
   pwm_table_index = 0;
   adc_average_counter = 0;
@@ -186,7 +190,6 @@ void SetMotorTarget(unsigned int position_type, unsigned int value) {
 
 */
 void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchInterrupt(void) {
-  unsigned int pwm_slow_down_value;
   unsigned int pwm_table_index_32;
   unsigned int pwm_table_index_64;
   unsigned int pwm_table_index_96;
@@ -229,13 +232,15 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
     if ((control_state == STATE_AFC_PULSING) && (afc_data.fast_afc_done)) {
       // We know that we are moving the motor slowly, so slow down the motor step transitions to damp out osciallations
       // DPARKER, it would probably be safest to limit the motor movement interrupt here as well (or do both in the same location)
-      pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO_SLOW_MODE;
-      PR2 = AFC_MOTOR_T2_PERIOD_VALUE_SLOW;
+      //pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO_SLOW_MODE;
+      //PR2 = AFC_MOTOR_T2_PERIOD_VALUE_SLOW;
+      PR2 = mk_test_pr2_register;
     } else {
-      pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO;
-      PR2 = AFC_MOTOR_T2_PERIOD_VALUE;
+      //pwm_slow_down_value = PWM_TO_MICROSTEP_RATIO;
+      //PR2 = AFC_MOTOR_T2_PERIOD_VALUE;
+      PR2 = mk_test_pr2_register;
     }
-    if (pwm_microstep_counter >= pwm_slow_down_value) {
+    if (pwm_microstep_counter >= mk_test_pwm_slow_down_value) {
       pwm_microstep_counter = 0;
       if (afc_motor.motor_motion == MOTOR_MOTION_CLOCKWISE) {
 	  pwm_table_index--;

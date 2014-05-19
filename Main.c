@@ -142,8 +142,8 @@ void DoStateMachine(void) {
     DoSerialCommand();
     if (FaultCheck()) {
       control_state = STATE_FAULT;
-    } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
-      control_state = STATE_AFC_PULSING;
+      //} else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
+      //control_state = STATE_AFC_PULSING;
     } else {
       control_state = STATE_MANUAL_MODE;
     }
@@ -193,9 +193,9 @@ void DoStateMachine(void) {
 	control_state = STATE_FAULT;
       } else if (auto_zero_requested) {
 	control_state = STATE_MOTOR_ZERO;
-      } else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
-	control_state = STATE_RESET;
-      }  
+      } //else if (PIN_MODE_SELECT == ILL_AFC_MODE) {
+	//control_state = STATE_RESET;
+      //}  
     }
     break;
 
@@ -310,7 +310,8 @@ void InitPeripherals(void){
   PR1 = T1_PERIOD_VALUE;  
   T1CON = T1_CONFIG_VALUE;
   
-  PR2 = AFC_MOTOR_T2_PERIOD_VALUE;  
+  //PR2 = AFC_MOTOR_T2_PERIOD_VALUE;
+  PR2 = mk_test_pr2_register;  
   T2CON = T2_CONFIG_VALUE;
   
   
