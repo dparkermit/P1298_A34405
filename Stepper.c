@@ -10,7 +10,7 @@ STEPPER_MOTOR afc_motor;                         // Data structure that holds th
 unsigned int adc_parameter_input;                // This stores the "parameter select" value
 unsigned int adc_analog_value_input;             // This stores the input value
 
-unsigned int mk_test_pr2_register;
+unsigned int mk_test_pr2_register = AFC_MOTOR_T2_PERIOD_VALUE;;
 unsigned int mk_test_pwm_slow_down_value;
 
 
