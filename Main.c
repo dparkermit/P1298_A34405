@@ -481,19 +481,19 @@ unsigned char ConvertParameterInput(void) {
   /*
     Based on the value of the spare analog input (adc_parameter_input) we select a different parameter
     
-    adc_parameter_input = 0,  0,      0     -> 6553   = Select Motor Position        0V = Position 0, 5V = Position 1024, 4 LSB Per Position
-    adc_parameter_input = 1V, 13107,  6554  -> 13107  = Select Home Poisiton         0V = Position 0, 5V = Position 1024, 4 LSB Per Position
-    adc_parameter_input = 2V, 26214,  13108 -> 32767  = Select AFC Offset            0V = -128, 2.5V = 0, 5V = 127, 16 LSB Per Position        
-    adc_parameter_input = 3V, 39321,  32768 -> 45874  = Select Pulse Rate Reading    0V = 0Hz, 5V = 512Hz, 8 LSB per Hz
-    adc_parameter_input = 4V, 53428,  45785 -> 58981  = Unused                       Return Zero
-    adc_parameter_input = 5V, 65535,  58982 -> 65535  = Select Auto Zero             0V = Not in (Do Not)  Auto Zero, 5V = In (Do)Auto Zero
+    adc_parameter_input = 0 (0->.5)    ,  0,      0     -> 6553   = Select Motor Position        0V = Position 0, 5V = Position 1024, 4 LSB Per Position
+    adc_parameter_input = 1V (.5->1.5) , 13170,  6554  -> 19660  = Select Home Poisiton         0V = Position 0, 5V = Position 1024, 4 LSB Per Position
+    adc_parameter_input = 2V (1.5->2.5), 26214,  19661 -> 32767  = Select AFC Offset            0V = -128, 2.5V = 0, 5V = 127, 16 LSB Per Position        
+    adc_parameter_input = 3V (2.5->3.5), 39321,  32768 -> 45874  = Select Pulse Rate Reading    0V = 0Hz, 5V = 512Hz, 8 LSB per Hz
+    adc_parameter_input = 4V (3.5->4.5), 53428,  45785 -> 58981  = Unused                       Return Zero
+    adc_parameter_input = 5V (4.5->5)  , 65535,  58982 -> 65535  = Select Auto Zero             0V = Not in (Do Not)  Auto Zero, 5V = In (Do)Auto Zero
     
     adc_analog_value_input is a 16 bit number
   */
   
   if (adc_parameter_input <= 6553) {
     return PARAMETER_MOTOR_POSITION;
-  } else if (adc_parameter_input <= 13107) {
+  } else if (adc_parameter_input <= 19660) {
     return PARAMETER_HOME_POSITION;
   } else if (adc_parameter_input <= 32767) {
     return PARAMETER_AFC_OFFSET;
