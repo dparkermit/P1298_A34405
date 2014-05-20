@@ -2,9 +2,8 @@
 #include "Serial_A34405.h"
 #include "Main.h"
 #include "Stepper.h"
-#include "afc.c"
+#include "afc.h"
 #include "Version_A34405.h"
-
 
 /*
   Serial Commands

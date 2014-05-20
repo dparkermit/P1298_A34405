@@ -1,6 +1,7 @@
 #include "afc.h"
 #include "Stepper.h"
 #include "tables.h"
+#include "Serial_A34405.h"
 
 
 #define MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  128
