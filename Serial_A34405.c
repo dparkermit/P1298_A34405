@@ -265,6 +265,9 @@ void ExecuteCommand(void) {
       break;
 
     case CMD_MK_SET_SPEED:
+      if (data_word <= AFC_MOTOR_T2_PERIOD_VALUE) {
+	data_word = AFC_MOTOR_T2_PERIOD_VALUE;
+      }
       mk_test_pr2_register = data_word;
       break;
       
