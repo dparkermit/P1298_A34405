@@ -102,7 +102,7 @@ void DoStateMachine(void) {
 
 
   case STATE_MOTOR_ZERO:
-    afc_motor.max_position = 1000;
+    afc_motor.max_position = 1000*MICRO_STEPPING_RESOLUTION;
     afc_motor.min_position = 0;
     afc_motor.current_position = afc_motor.max_position;
     afc_motor.target_position = afc_motor.min_position;
@@ -135,8 +135,8 @@ void DoStateMachine(void) {
 
     
   case STATE_RESET:
-    afc_motor.min_position = MOTOR_MINIMUM_POSITION;
-    afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
+    afc_motor.min_position = MOTOR_MINIMUM_POSITION * MICRO_STEPPING_RESOLUTION;
+    afc_motor.max_position = MOTOR_MAXIMUM_POSITION * MICRO_STEPPING_RESOLUTION;
     ClrWdt();
     // ResetAllFaults();  DPARKER no faults so no need to reset them
     DoSerialCommand();
@@ -518,12 +518,12 @@ void DoAnalogInputSample(void) {
     
   case PARAMETER_MOTOR_POSITION:
     // Move the motor to that position
-    afc_motor.target_position = adc_analog_value_input >> 6;
+    afc_motor.target_position = (adc_analog_value_input >> 6) * MICRO_STEPPING_RESOLUTION;
     break;
     
   case PARAMETER_HOME_POSITION:
     // Set the home position and store to EEPRORM
-    afc_motor.home_position = adc_analog_value_input >> 6;
+    afc_motor.home_position = (adc_analog_value_input >> 6) * MICRO_STEPPING_RESOLUTION;
     M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, afc_motor.home_position);
     break;
 
@@ -566,11 +566,11 @@ void UpdateAnalogOutput(void) {
   switch (parameter) {
     
   case PARAMETER_MOTOR_POSITION:
-    U24_MCP4725.data_12_bit = (afc_motor.current_position << 2);
+    U24_MCP4725.data_12_bit = (afc_motor.current_position << 2) / MICRO_STEPPING_RESOLUTION;
     break;
 
   case PARAMETER_HOME_POSITION:
-    U24_MCP4725.data_12_bit = afc_motor.home_position << 2;
+    U24_MCP4725.data_12_bit = (afc_motor.home_position << 2) / MICRO_STEPPING_RESOLUTION;
     break;
 
   case PARAMETER_AFC_OFFSET:

@@ -30,7 +30,9 @@ unsigned int adc_analog_input_accumulator;       // This stores the data for the
 #define PTPER_VALUE                          (unsigned int)(FCY*32/MOTOR_PWM_FCY)
 #define MOTOR_DECREASE_CURRENT_PWM_CYCLES    (unsigned int) (MOTOR_PWM_FCY * MOTOR_LOW_POWER_DELAY)
 
-#define PWM_PWMCON_VALUE        0b0000000000000000
+#define MICRO_STEP_COUNT            (32/MICRO_STEPPING_RESOLUTION)
+
+#define PWM_PWMCON_VALUE        0b0000000000000001
 /* 
    Clear Fault Interrupt flag 
    Clear Current Limit Interrupt flag 
@@ -67,8 +69,8 @@ unsigned int adc_analog_input_accumulator;       // This stores the data for the
 // See H File for documentation 
 void InitPWM(void) {
 
-  afc_motor.max_position = MOTOR_MAXIMUM_POSITION;
-  afc_motor.min_position = MOTOR_MINIMUM_POSITION;
+  afc_motor.max_position = MOTOR_MAXIMUM_POSITION * MICRO_STEPPING_RESOLUTION;
+  afc_motor.min_position = MOTOR_MINIMUM_POSITION * MICRO_STEPPING_RESOLUTION;
   
   // Load Values from EEPROM
   afc_motor.home_position = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION);
@@ -257,7 +259,7 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
       PDC4 = PWMHighPowerTable[pwm_table_index_96];
       
       counter_1_32_micro_steps++;
-      if (counter_1_32_micro_steps >= 32) {
+      if (counter_1_32_micro_steps >= MICRO_STEP_COUNT) {
 	// We have moved a full Step
 	counter_1_32_micro_steps = 0;
 	if (afc_motor.motor_motion == MOTOR_MOTION_CLOCKWISE) {

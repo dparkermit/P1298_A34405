@@ -11,7 +11,7 @@
 #define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      48
 #define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      14
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         20
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         5
 
 
 
@@ -56,13 +56,13 @@ void DoAFC(void) {
       This means less filtering and and high gain integral response - Max 4 Steps per sample
     */
     if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_4_STEPS) {
-      new_target_position += 4;
+      new_target_position += 4 * MICRO_STEPPING_RESOLUTION;
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_3_STEPS) {
-      new_target_position += 3;
+      new_target_position += 3 * MICRO_STEPPING_RESOLUTION;
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_2_STEPS) {
-      new_target_position += 2;
+      new_target_position += 2 * MICRO_STEPPING_RESOLUTION;
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
-      new_target_position += 1;
+      new_target_position += 1 * MICRO_STEPPING_RESOLUTION;
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
       if (afc_data.pulses_on >= 4) {
 	afc_data.fast_afc_done = 1;
@@ -71,25 +71,25 @@ void DoAFC(void) {
       }
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_2_STEPS) {
       if (new_target_position >= 1) {
-	new_target_position -= 1;
+	new_target_position -= 1 * MICRO_STEPPING_RESOLUTION;
       } else {
 	new_target_position = 0;
       }
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_3_STEPS) {
       if (new_target_position >= 2) {
-	new_target_position -= 2;
+	new_target_position -= 2 * MICRO_STEPPING_RESOLUTION;
       } else {
 	new_target_position = 0;
       }
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_4_STEPS) {
       if (new_target_position >= 3) {
-	new_target_position -= 3;
+	new_target_position -= 3 * MICRO_STEPPING_RESOLUTION;
       } else {
 	new_target_position = 0;
       }
     } else {
       if (new_target_position >= 4) {
-	new_target_position -= 4;
+	new_target_position -= 4 * MICRO_STEPPING_RESOLUTION;
       } else {
 	new_target_position = 0;
       }
