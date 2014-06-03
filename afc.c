@@ -4,14 +4,15 @@
 #include "Serial_A34405.h"
 
 
+
 #define MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  128
 
-#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      108
-#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      78
-#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      48
-#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      14
+#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 5)
+#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 4)
+#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 3)
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         5
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         (unsigned int)(MOTOR_MOVE_FULL_STEP_THRESHOLD / MICRO_STEPPING_RESOLUTION)
 
 
 
@@ -205,10 +206,10 @@ signed char FrequencyErrorFilterSlowResponse() {
   signed int average;
   unsigned char location;
   
-  if (afc_data.pulses_on < 8) {
+  if ((afc_data.pulses_on < 8) || (afc_data.valid_data_history_count <8)) {
+    // There are not at least 8 valid data points for the current motor position.  Return Zero
     return 0;
   } else {
-    
     location = afc_data.data_pointer;
     // Remember that data_pointer points to the NEXT place to put data, so most recent data is n-1
     // If number of pulses is greater than or equal to 8, Average the prevous 8 data points
@@ -236,8 +237,8 @@ signed char FrequencyErrorFilterSlowResponse() {
     location--;
     location &= 0x0F;
     average += afc_data.frequency_error_history[location];
-
-
+    
+      
     average >>= 3; 
     
     return average;
