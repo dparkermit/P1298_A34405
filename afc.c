@@ -12,7 +12,7 @@
 #define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 3)
 #define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         (unsigned int)(MOTOR_MOVE_FULL_STEP_THRESHOLD / MICRO_STEPPING_RESOLUTION)
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         (MOTOR_MOVE_FULL_STEP_THRESHOLD / MICRO_STEPPING_RESOLUTION)
 
 
 
@@ -33,7 +33,7 @@ void ClearAFCErrorHistory(void);
 
 
 void FilterFrequencyErrorData(void) {
-  if ((afc_data.pulses_on <= MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
+  if (!afc_data.fast_afc_done) {
     afc_data.frequency_error_filtered = FrequencyErrorFilterFastResponse();
   } else {
     afc_data.frequency_error_filtered = FrequencyErrorFilterSlowResponse();
@@ -48,8 +48,11 @@ void DoAFC(void) {
   // Sigma/delta data is 10 bit unsigned so we should have no problem with the conversion to signed and overflow even with the frequency error offset.
   new_target_position = afc_motor.current_position;
 
+  if (afc_data.pulses_on >= MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) {
+    afc_data.fast_afc_done = 1;
+  }
 
-  if ((afc_data.pulses_on <= MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE) && (!afc_data.fast_afc_done)) {
+  if (!afc_data.fast_afc_done) {
     /*
       The magnetron has just turned on after being off for a period of time.
       The tuner *could* be wildly out of position.

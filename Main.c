@@ -451,25 +451,25 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   } else if ( error < -128) {
     error = -128;
   }
-  if ((afc_data.sigma_data >= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data >= SIGMA_DELTA_MINIMUM_ADC_READING)) {
+  if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
     // There wasn't acutaully a pulse, record an error signal of zero.
     // We don't want to ignore the pulse because we want to log what happened
     error = 0;
   }
   
-  if ((afc_data.fast_afc_done) && (afc_motor.motor_motion == MOTOR_MOTION_STOPPED)) {
-    /* 
-       When pulsing at 400Hz, it can take a lot of pulses to move the motor.
-       We don't want to be calculating a new target with data that is taken while the motor is moving
-       Therefore we need to make sure that we have at least 8 pulses after the motor has reached it's new position.
-    */
-    afc_data.valid_data_history_count++;
-    if (afc_data.valid_data_history_count >= 0x0F) {
-      afc_data.valid_data_history_count = 0x0F;
-    } 
-  } else {
+  /* 
+     afc_data.valid_data_history_count is also zero in the PWM interrupt if the motor is moving
+     It is nessessary to check both places to work properly across all range of rep rates
+  */
+  if (afc_motor.target_position != afc_motor.current_position) {
     afc_data.valid_data_history_count = 0;
   }
+
+  afc_data.valid_data_history_count++;
+  if (afc_data.valid_data_history_count >= 0x0F) {
+    afc_data.valid_data_history_count = 0x0F;
+  } 
+  
   afc_data.frequency_error_history[afc_data.data_pointer] = error;
   afc_data.data_pointer++;
   afc_data.data_pointer &= 0x0F;

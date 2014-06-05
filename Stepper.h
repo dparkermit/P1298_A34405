@@ -8,7 +8,7 @@
 #define STEPS_PER_SECOND           100         // The motor will move at 100 steps per second or 1/2 Revolution per Second
 #define STEPS_PER_SECOND_SLOW      25          //
 
-#define MICRO_STEPPING_RESOLUTION   2          // This will break each "step" into this many smaller units
+#define MICRO_STEPPING_RESOLUTION   1          // This will break each "step" into this many smaller units
 
 #define PWM_TO_MICROSTEP_RATIO      6          // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit
 #define PWM_TO_MICROSTEP_RATIO_SLOW_MODE      36         // This sets the speed of the AC waveform when changing positions.  It will deppend on the motor circuit

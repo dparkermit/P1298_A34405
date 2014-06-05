@@ -225,6 +225,7 @@ void __attribute__((interrupt(__save__(CORCON,SR)),auto_psv)) _PWMSpEventMatchIn
 
   // -------------- BEGIN MOTOR PWM CONTROL CODE ------- //
   if (afc_motor.motor_motion != MOTOR_MOTION_STOPPED) {
+    afc_data.valid_data_history_count = 0;
   // Move through the micro step table if the motor is moving
     motor_stopped_counter_pwm_cycles = 0;
     pwm_microstep_counter++;

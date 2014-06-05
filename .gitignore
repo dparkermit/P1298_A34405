@@ -166,7 +166,6 @@ pip-log.txt
 #MICROCHIP MPLAB FILES
 *.cof
 *.o
-*.hex
 *.map
 *.mcs
 
