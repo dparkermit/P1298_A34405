@@ -3,52 +3,16 @@
 
 #include "ETM_BUFFER_BYTE_64.h"
 #include <uart.h>
+#include "main.h"
 
 // Command List
 #define CMD_READ_RAM_VALUE                              0x20
-#define CMD_SET_TARGET_POSITION                         0x30
-#define CMD_MOVE_CLOCKWISE                              0x32
-#define CMD_MOVE_COUNTER_CLOCKWISE                      0x34
-#define CMD_SET_HOME_POSITION                           0x36
-#define CMD_READ_EEPROM_REGISTER                        0x40
-#define CMD_WRITE_EEPROM_REGISTER                       0x42
-#define CMD_OVERCURRENT_SHUTDOWN_TEST                   0xE0
-#define CMD_READ_AFC_ERROR_DATA_HISTORY                 0x50
-#define CMD_READ_MEM_LOCATION                           0x54
-#define CMD_SET_ERROR_OFFSET                            0x60
-#define CMD_DO_POSITION_AUTO_ZERO                       0x70
-#define CMD_AFC_NOT_PULSING_GO_HOME                     0x72
+#define CMD_READ_TRIGGER_WIDTH                          0x30
 #define CMD_DATA_LOGGING                                0x56
 
 
 // RAM Locations
 #define RAM_READ_STATE                                  0x01
-#define RAM_READ_VERSION                                0x02
-
-#define RAM_READ_CURRENT_POSITION                       0x10
-#define RAM_READ_TARGET_POSITION                        0x12
-#define RAM_READ_HOME_POSITION                          0x14
-#define RAM_READ_MAX_POSITION                           0x16
-#define RAM_READ_MIN_POSITION                           0x18
-
-#define RAM_READ_ADCBUF0                                0x30
-#define RAM_READ_ADCBUF1                                0x31
-#define RAM_READ_ADC_MOTOR_CURRENT_A                    0x32
-#define RAM_READ_ADC_MOTOR_CURRENT_B                    0x33
-#define RAM_READ_ADC_PARAMETER_INPUT                    0x3B
-#define RAM_READ_ANALOG_INPUT                           0x3C
-#define RAM_READ_ANALOG_OUTPUT                          0x3D
-
-
-#define RAM_READ_SIGMA_DATA                             0x40
-#define RAM_READ_DELTA_DATA                             0x41
-#define RAM_READ_FREQUENCY_ERROR_FILTERED               0x42
-#define RAM_READ_FREQUENCY_ERROR_OFFSET                 0x43
-#define RAM_READ_NUMBER_PULSES_ON                       0x44
-#define RAM_READ_TIME_NOT_PULSING                       0x45
-#define RAM_READ_AFC_DISTANCE_FROM_HOME_AT_STOP         0x46
-
-#define RAM_READ_PRF                                    0x50
 
 
 
@@ -75,6 +39,7 @@ struct CommandStringStruct {
 extern struct CommandStringStruct command_string;
 extern BUFFERBYTE64 uart1_input_buffer;
 extern BUFFERBYTE64 uart1_output_buffer;
+extern trig_pulse_width;
 
 void DoSerialCommand(void);
 

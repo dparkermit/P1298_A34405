@@ -443,8 +443,8 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   afc_data.delta_data >>= 4;
 
 
-  //error = afc_data.sigma_data - afc_data.delta_data;
-  error = afc_data.delta_data - afc_data.sigma_data;
+  error = afc_data.sigma_data - afc_data.delta_data;
+  //error = afc_data.delta_data - afc_data.sigma_data;
   error += afc_data.frequency_error_offset;
   if (error > 127) {
     error = 127;
@@ -533,6 +533,8 @@ void DoAnalogInputSample(void) {
   case PARAMETER_HOME_POSITION:
     // Set the home position and store to EEPRORM
     afc_motor.home_position = (adc_analog_value_input >> 6) * MICRO_STEPPING_RESOLUTION;
+    if (afc_motor.min_position > afc_motor.home_position)
+        afc_motor.home_position = DEFAULT_HOME_POSITION * MICRO_STEPPING_RESOLUTION;
     M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, afc_motor.home_position);
     break;
 
