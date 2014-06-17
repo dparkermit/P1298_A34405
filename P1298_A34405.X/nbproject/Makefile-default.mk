@@ -82,98 +82,114 @@ ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 ${OBJECTDIR}/_ext/1472/Main.o: ../Main.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/Main.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Main.c  -o ${OBJECTDIR}/_ext/1472/Main.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Main.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/Main.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Main.c  -o ${OBJECTDIR}/_ext/1472/Main.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Main.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/Main.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/Serial_A34405.o: ../Serial_A34405.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/Serial_A34405.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Serial_A34405.c  -o ${OBJECTDIR}/_ext/1472/Serial_A34405.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Serial_A34405.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/Serial_A34405.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Serial_A34405.c  -o ${OBJECTDIR}/_ext/1472/Serial_A34405.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Serial_A34405.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/Serial_A34405.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o: ../ETM_BUFFER_BYTE_64.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_BUFFER_BYTE_64.c  -o ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_BUFFER_BYTE_64.c  -o ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/Stepper.o: ../Stepper.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/Stepper.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Stepper.c  -o ${OBJECTDIR}/_ext/1472/Stepper.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Stepper.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/Stepper.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Stepper.c  -o ${OBJECTDIR}/_ext/1472/Stepper.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Stepper.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/Stepper.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/ETM_I2C.o: ../ETM_I2C.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/ETM_I2C.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_I2C.c  -o ${OBJECTDIR}/_ext/1472/ETM_I2C.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_I2C.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/ETM_I2C.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_I2C.c  -o ${OBJECTDIR}/_ext/1472/ETM_I2C.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_I2C.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ETM_I2C.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/MCP4725.o: ../MCP4725.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/MCP4725.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../MCP4725.c  -o ${OBJECTDIR}/_ext/1472/MCP4725.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/MCP4725.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/MCP4725.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../MCP4725.c  -o ${OBJECTDIR}/_ext/1472/MCP4725.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/MCP4725.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/MCP4725.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/M24LC64F.o: ../M24LC64F.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/M24LC64F.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../M24LC64F.c  -o ${OBJECTDIR}/_ext/1472/M24LC64F.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/M24LC64F.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/M24LC64F.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../M24LC64F.c  -o ${OBJECTDIR}/_ext/1472/M24LC64F.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/M24LC64F.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/M24LC64F.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/afc.o: ../afc.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/afc.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../afc.c  -o ${OBJECTDIR}/_ext/1472/afc.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/afc.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/afc.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../afc.c  -o ${OBJECTDIR}/_ext/1472/afc.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/afc.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1    -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/afc.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 else
 ${OBJECTDIR}/_ext/1472/Main.o: ../Main.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/Main.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Main.c  -o ${OBJECTDIR}/_ext/1472/Main.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Main.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/Main.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Main.c  -o ${OBJECTDIR}/_ext/1472/Main.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Main.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/Main.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/Serial_A34405.o: ../Serial_A34405.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/Serial_A34405.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Serial_A34405.c  -o ${OBJECTDIR}/_ext/1472/Serial_A34405.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Serial_A34405.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/Serial_A34405.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Serial_A34405.c  -o ${OBJECTDIR}/_ext/1472/Serial_A34405.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Serial_A34405.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/Serial_A34405.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o: ../ETM_BUFFER_BYTE_64.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_BUFFER_BYTE_64.c  -o ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_BUFFER_BYTE_64.c  -o ${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ETM_BUFFER_BYTE_64.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/Stepper.o: ../Stepper.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/Stepper.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Stepper.c  -o ${OBJECTDIR}/_ext/1472/Stepper.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Stepper.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/Stepper.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../Stepper.c  -o ${OBJECTDIR}/_ext/1472/Stepper.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/Stepper.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/Stepper.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/ETM_I2C.o: ../ETM_I2C.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/ETM_I2C.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_I2C.c  -o ${OBJECTDIR}/_ext/1472/ETM_I2C.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_I2C.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/ETM_I2C.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../ETM_I2C.c  -o ${OBJECTDIR}/_ext/1472/ETM_I2C.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/ETM_I2C.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ETM_I2C.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/MCP4725.o: ../MCP4725.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/MCP4725.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../MCP4725.c  -o ${OBJECTDIR}/_ext/1472/MCP4725.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/MCP4725.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/MCP4725.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../MCP4725.c  -o ${OBJECTDIR}/_ext/1472/MCP4725.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/MCP4725.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/MCP4725.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/M24LC64F.o: ../M24LC64F.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/M24LC64F.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../M24LC64F.c  -o ${OBJECTDIR}/_ext/1472/M24LC64F.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/M24LC64F.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/M24LC64F.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../M24LC64F.c  -o ${OBJECTDIR}/_ext/1472/M24LC64F.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/M24LC64F.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/M24LC64F.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 ${OBJECTDIR}/_ext/1472/afc.o: ../afc.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1472 
 	@${RM} ${OBJECTDIR}/_ext/1472/afc.o.d 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../afc.c  -o ${OBJECTDIR}/_ext/1472/afc.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/afc.o.d"      -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
+	@${RM} ${OBJECTDIR}/_ext/1472/afc.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../afc.c  -o ${OBJECTDIR}/_ext/1472/afc.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/afc.o.d"        -g -omf=elf -O0 -I".." -merrata=psv_trap -msmart-io=1 -Wall -msfr-warn=off
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/afc.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 endif
@@ -195,12 +211,12 @@ endif
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -D__DEBUG -D__MPLAB_DEBUGGER_REAL_ICE=1  -omf=elf -Wl,--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_REAL_ICE=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--library-path="..",--no-force-link,--smart-io,-Map="${DISTDIR}/P1298_A34405.X.${IMAGE_TYPE}.map",--report-mem$(MP_EXTRA_LD_POST) 
+	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1  -omf=elf -Wl,,--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_ICD3=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--library-path="..",--no-force-link,--smart-io,-Map="${DISTDIR}/P1298_A34405.X.${IMAGE_TYPE}.map",--report-mem$(MP_EXTRA_LD_POST) 
 	
 else
 dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -omf=elf -Wl,--defsym=__MPLAB_BUILD=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--library-path="..",--no-force-link,--smart-io,-Map="${DISTDIR}/P1298_A34405.X.${IMAGE_TYPE}.map",--report-mem$(MP_EXTRA_LD_POST) 
+	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -omf=elf -Wl,,--defsym=__MPLAB_BUILD=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--library-path="..",--no-force-link,--smart-io,-Map="${DISTDIR}/P1298_A34405.X.${IMAGE_TYPE}.map",--report-mem$(MP_EXTRA_LD_POST) 
 	${MP_CC_DIR}\\xc16-bin2hex dist/${CND_CONF}/${IMAGE_TYPE}/P1298_A34405.X.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} -a  -omf=elf 
 	
 endif
