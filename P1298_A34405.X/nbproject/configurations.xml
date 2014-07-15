@@ -180,8 +180,11 @@
         <property key="output-file-format" value="elf"/>
         <property key="save-temps" value="false"/>
       </C30Global>
-      <ICD3PlatformTool>
-      </ICD3PlatformTool>
+      <RealICEPlatformTool>
+        <property key="tracecontrol.disablemacros" value="true"/>
+        <property key="tracecontrol.medium" value="0"/>
+        <property key="tracecontrol.select" value="0"/>
+      </RealICEPlatformTool>
     </conf>
   </confs>
 </configurationDescriptor>

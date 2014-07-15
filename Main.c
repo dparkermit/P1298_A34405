@@ -419,7 +419,7 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   // 20us Total
   __delay32(600);
     
-  if (_RA9) {
+
   // Have the Pic sample the output of the S&H 16 times and average those results so that we have hopefully cleaner data
   n = 0;
   afc_data.sigma_data = 0;
@@ -480,7 +480,6 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   afc_data.time_off_100ms_units = 0;
   prf_counter++;
   afc_data.trigger_complete = 1;
-  }
   _INT0IF = 0;
 }
 
