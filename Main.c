@@ -79,7 +79,7 @@ void DoStateMachine(void) {
 
 
   case STATE_WAIT_FOR_AUTO_ZERO:
-    auto_zero_requested = 0;
+    auto_zero_requested = 1;
     while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
       DoSerialCommand();
       ClrWdt();
@@ -419,7 +419,7 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   // 20us Total
   __delay32(600);
     
-  if (_RA9) {
+  if (!_RA9){
   // Have the Pic sample the output of the S&H 16 times and average those results so that we have hopefully cleaner data
   n = 0;
   afc_data.sigma_data = 0;
