@@ -79,7 +79,7 @@ void DoStateMachine(void) {
 
 
   case STATE_WAIT_FOR_AUTO_ZERO:
-    auto_zero_requested = 0;
+    auto_zero_requested = 1;
     while (control_state == STATE_WAIT_FOR_AUTO_ZERO) {
       DoSerialCommand();
       ClrWdt();
@@ -420,66 +420,68 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   __delay32(600);
     
 
-  // Have the Pic sample the output of the S&H 16 times and average those results so that we have hopefully cleaner data
-  n = 0;
-  afc_data.sigma_data = 0;
-  afc_data.delta_data = 0;
+  if (!_RA9){
+      // Have the Pic sample the output of the S&H 16 times and average those results so that we have hopefully cleaner data
+      n = 0;
+      afc_data.sigma_data = 0;
+      afc_data.delta_data = 0;
 
-  _P0RDY = 0;
-  _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
-  while (n<14) {
-    n++;
-    while(!_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
-    afc_data.sigma_data += ADCBUF0;
-    afc_data.delta_data += ADCBUF1;
-    _P0RDY = 0;
-    _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
-  } 
-  // while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
-  while(!_P0RDY);
-  afc_data.sigma_data += ADCBUF0;
-  afc_data.delta_data += ADCBUF1;
-  afc_data.sigma_data >>= 4;
-  afc_data.delta_data >>= 4;
+      _P0RDY = 0;
+      _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
+      while (n<14) {
+        n++;
+        while(!_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
+        afc_data.sigma_data += ADCBUF0;
+        afc_data.delta_data += ADCBUF1;
+        _P0RDY = 0;
+        _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
+      }
+      // while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
+      while(!_P0RDY);
+      afc_data.sigma_data += ADCBUF0;
+      afc_data.delta_data += ADCBUF1;
+      afc_data.sigma_data >>= 4;
+      afc_data.delta_data >>= 4;
 
 
-  error = afc_data.sigma_data - afc_data.delta_data;
-  //error = afc_data.delta_data - afc_data.sigma_data;
-  error += afc_data.frequency_error_offset;
-  if (error > 127) {
-    error = 127;
-  } else if ( error < -128) {
-    error = -128;
-  }
-  if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
-    // There wasn't acutaully a pulse, record an error signal of zero.
-    // We don't want to ignore the pulse because we want to log what happened
-    error = 0;
-  }
-  
-  /* 
-     afc_data.valid_data_history_count is also zero in the PWM interrupt if the motor is moving
-     It is nessessary to check both places to work properly across all range of rep rates
-  */
-  if (afc_motor.target_position != afc_motor.current_position) {
-    afc_data.valid_data_history_count = 0;
-  }
+      error = afc_data.sigma_data - afc_data.delta_data;
+      //error = afc_data.delta_data - afc_data.sigma_data;
+      error += afc_data.frequency_error_offset;
+      if (error > 127) {
+        error = 127;
+      } else if ( error < -128) {
+        error = -128;
+      }
+      if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
+        // There wasn't acutaully a pulse, record an error signal of zero.
+        // We don't want to ignore the pulse because we want to log what happened
+        error = 0;
+      }
 
-  afc_data.valid_data_history_count++;
-  if (afc_data.valid_data_history_count >= 0x0F) {
-    afc_data.valid_data_history_count = 0x0F;
-  } 
-  
-  afc_data.frequency_error_history[afc_data.data_pointer] = error;
-  afc_data.data_pointer++;
-  afc_data.data_pointer &= 0x0F;
-  afc_data.pulses_on++;
-  if (afc_data.pulses_on > 0xFF00) {
-    afc_data.pulses_on = 0xFF00;
+      /*
+         afc_data.valid_data_history_count is also zero in the PWM interrupt if the motor is moving
+         It is nessessary to check both places to work properly across all range of rep rates
+      */
+      if (afc_motor.target_position != afc_motor.current_position) {
+        afc_data.valid_data_history_count = 0;
+      }
+
+      afc_data.valid_data_history_count++;
+      if (afc_data.valid_data_history_count >= 0x0F) {
+        afc_data.valid_data_history_count = 0x0F;
+      }
+
+      afc_data.frequency_error_history[afc_data.data_pointer] = error;
+      afc_data.data_pointer++;
+      afc_data.data_pointer &= 0x0F;
+      afc_data.pulses_on++;
+      if (afc_data.pulses_on > 0xFF00) {
+        afc_data.pulses_on = 0xFF00;
+      }
+      afc_data.time_off_100ms_units = 0;
+      prf_counter++;
+      afc_data.trigger_complete = 1;
   }
-  afc_data.time_off_100ms_units = 0;
-  prf_counter++;
-  afc_data.trigger_complete = 1;
   _INT0IF = 0;
 }
 
