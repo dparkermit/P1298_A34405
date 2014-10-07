@@ -264,9 +264,9 @@ void InitPeripherals(void){
 
   /* Init I2C */
   /*
-  I2CCON = I2C_ON & I2C_IDLE_CON &  I2C_CLK_REL & I2C_IPMI_DIS & I2C_7BIT_ADD & I2C_SLW_DIS & I2C_SM_DIS; 
-  I2CCON &= I2C_GCALL_DIS & I2C_STR_DIS & I2C_ACK;
-  I2CBRG = I2C_BAUD_RATE_GENERATOR;
+    I2CCON = I2C_ON & I2C_IDLE_CON &  I2C_CLK_REL & I2C_IPMI_DIS & I2C_7BIT_ADD & I2C_SLW_DIS & I2C_SM_DIS; 
+    I2CCON &= I2C_GCALL_DIS & I2C_STR_DIS & I2C_ACK;
+    I2CBRG = I2C_BAUD_RATE_GENERATOR;
   */
 
 
@@ -318,7 +318,7 @@ void InitPeripherals(void){
      --- UART Setup ---
      See uart.h and Microchip documentation for more information about the condfiguration
      // DPARKER cleanup this uart configuration
-  */
+     */
 #define UART1_BAUDRATE             303000        // U1 Baud Rate
   //#define UART1_BAUDRATE             9600
 #define A35997_U1MODE_VALUE        (UART_DIS & UART_IDLE_STOP & UART_RX_TX & UART_DIS_WAKE & UART_DIS_LOOPBACK & UART_DIS_ABAUD & UART_UXRX_IDLE_ONE & UART_BRGH_SIXTEEN & UART_NO_PAR_8BIT & UART_1STOPBIT)
@@ -420,66 +420,66 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   __delay32(600);
     
   if (!_RA9){
-  // Have the Pic sample the output of the S&H 16 times and average those results so that we have hopefully cleaner data
-  n = 0;
-  afc_data.sigma_data = 0;
-  afc_data.delta_data = 0;
+    // Have the Pic sample the output of the S&H 16 times and average those results so that we have hopefully cleaner data
+    n = 0;
+    afc_data.sigma_data = 0;
+    afc_data.delta_data = 0;
 
-  _P0RDY = 0;
-  _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
-  while (n<14) {
-    n++;
-    while(!_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
-    afc_data.sigma_data += ADCBUF0;
-    afc_data.delta_data += ADCBUF1;
     _P0RDY = 0;
     _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
-  } 
-  // while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
-  while(!_P0RDY);
-  afc_data.sigma_data += ADCBUF0;
-  afc_data.delta_data += ADCBUF1;
-  afc_data.sigma_data >>= 4;
-  afc_data.delta_data >>= 4;
+    while (n<14) {
+      n++;
+      while(!_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
+      afc_data.sigma_data += ADCBUF0;
+      afc_data.delta_data += ADCBUF1;
+      _P0RDY = 0;
+      _SWTRG0 = 1;             // Trigger Conversion on AN0/AN1
+    } 
+    // while(_P0RDY);           // Wait for the conversion on AN0/AN1 to complete
+    while(!_P0RDY);
+    afc_data.sigma_data += ADCBUF0;
+    afc_data.delta_data += ADCBUF1;
+    afc_data.sigma_data >>= 4;
+    afc_data.delta_data >>= 4;
 
 
-  error = afc_data.sigma_data - afc_data.delta_data;
-  //error = afc_data.delta_data - afc_data.sigma_data;
-  error += afc_data.frequency_error_offset;
-  if (error > 127) {
-    error = 127;
-  } else if ( error < -128) {
-    error = -128;
-  }
-  if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
-    // There wasn't acutaully a pulse, record an error signal of zero.
-    // We don't want to ignore the pulse because we want to log what happened
-    error = 0;
-  }
+    error = afc_data.sigma_data - afc_data.delta_data;
+    //error = afc_data.delta_data - afc_data.sigma_data;
+    error += afc_data.frequency_error_offset;
+    if (error > 127) {
+      error = 127;
+    } else if ( error < -128) {
+      error = -128;
+    }
+    if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
+      // There wasn't acutaully a pulse, record an error signal of zero.
+      // We don't want to ignore the pulse because we want to log what happened
+      error = 0;
+    }
   
-  /* 
-     afc_data.valid_data_history_count is also zero in the PWM interrupt if the motor is moving
-     It is nessessary to check both places to work properly across all range of rep rates
-  */
-  if (afc_motor.target_position != afc_motor.current_position) {
-    afc_data.valid_data_history_count = 0;
-  }
+    /* 
+       afc_data.valid_data_history_count is also zero in the PWM interrupt if the motor is moving
+       It is nessessary to check both places to work properly across all range of rep rates
+    */
+    if (afc_motor.target_position != afc_motor.current_position) {
+      afc_data.valid_data_history_count = 0;
+    }
 
-  afc_data.valid_data_history_count++;
-  if (afc_data.valid_data_history_count >= 0x0F) {
-    afc_data.valid_data_history_count = 0x0F;
-  } 
+    afc_data.valid_data_history_count++;
+    if (afc_data.valid_data_history_count >= 0x0F) {
+      afc_data.valid_data_history_count = 0x0F;
+    } 
   
-  afc_data.frequency_error_history[afc_data.data_pointer] = error;
-  afc_data.data_pointer++;
-  afc_data.data_pointer &= 0x0F;
-  afc_data.pulses_on++;
-  if (afc_data.pulses_on > 0xFF00) {
-    afc_data.pulses_on = 0xFF00;
-  }
-  afc_data.time_off_100ms_units = 0;
-  prf_counter++;
-  afc_data.trigger_complete = 1;
+    afc_data.frequency_error_history[afc_data.data_pointer] = error;
+    afc_data.data_pointer++;
+    afc_data.data_pointer &= 0x0F;
+    afc_data.pulses_on++;
+    if (afc_data.pulses_on > 0xFF00) {
+      afc_data.pulses_on = 0xFF00;
+    }
+    afc_data.time_off_100ms_units = 0;
+    prf_counter++;
+    afc_data.trigger_complete = 1;
   }
   _INT0IF = 0;
 }
@@ -535,7 +535,7 @@ void DoAnalogInputSample(void) {
     // Set the home position and store to EEPRORM
     afc_motor.home_position = (adc_analog_value_input >> 6) * MICRO_STEPPING_RESOLUTION;
     if (afc_motor.min_position > afc_motor.home_position)
-        afc_motor.home_position = DEFAULT_HOME_POSITION * MICRO_STEPPING_RESOLUTION;
+      afc_motor.home_position = DEFAULT_HOME_POSITION * MICRO_STEPPING_RESOLUTION;
     M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_HOME_POSITION, afc_motor.home_position);
     break;
 
