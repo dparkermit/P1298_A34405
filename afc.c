@@ -209,7 +209,7 @@ signed char FrequencyErrorFilterSlowResponse() {
   signed int average;
   unsigned char location;
   
-  if ((afc_data.pulses_on < 8) || (afc_data.valid_data_history_count < 8)) {
+  if ((afc_data.pulses_on < 4) || (afc_data.valid_data_history_count < 4)) {
     // There are not at least 8 valid data points for the current motor position.  Return Zero
     return 0;
   } else {
@@ -242,7 +242,7 @@ signed char FrequencyErrorFilterSlowResponse() {
     average += afc_data.frequency_error_history[location];
     
       
-    average >>= 3; 
+    average >>= 2;
     
     return average;
   }

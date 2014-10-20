@@ -49,7 +49,7 @@
         <targetDevice>dsPIC30F2023</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>ICD3PlatformTool</platformTool>
+        <platformTool>RealICEPlatformTool</platformTool>
         <languageToolchain>XC16</languageToolchain>
         <languageToolchainVersion>1.11</languageToolchainVersion>
         <platform>3</platform>
@@ -61,7 +61,6 @@
         </linkerTool>
         <loading>
           <useAlternateLoadableFile>false</useAlternateLoadableFile>
-          <parseOnProdLoad>false</parseOnProdLoad>
           <alternateLoadableFile></alternateLoadableFile>
         </loading>
       </compileType>
@@ -112,9 +111,6 @@
         <property key="scalar-model" value="default"/>
         <property key="use-cci" value="false"/>
       </C30>
-      <C30-AR>
-        <property key="additional-options-chop-files" value="false"/>
-      </C30-AR>
       <C30-AS>
         <property key="assembler-symbols" value=""/>
         <property key="expand-macros" value="false"/>
@@ -180,8 +176,8 @@
         <property key="output-file-format" value="elf"/>
         <property key="save-temps" value="false"/>
       </C30Global>
-      <ICD3PlatformTool>
-      </ICD3PlatformTool>
+      <RealICEPlatformTool>
+      </RealICEPlatformTool>
     </conf>
   </confs>
 </configurationDescriptor>
