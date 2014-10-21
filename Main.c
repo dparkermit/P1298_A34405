@@ -451,7 +451,7 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   } else if ( error < -128) {
     error = -128;
   }
-  if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) && (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
+  if ((afc_data.sigma_data <= SIGMA_DELTA_MINIMUM_ADC_READING) || (afc_data.delta_data <= SIGMA_DELTA_MINIMUM_ADC_READING)) {
     // There wasn't acutaully a pulse, record an error signal of zero.
     // We don't want to ignore the pulse because we want to log what happened
     error = 0;

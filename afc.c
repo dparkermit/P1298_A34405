@@ -12,7 +12,7 @@
 #define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 3)
 #define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         (MOTOR_MOVE_FULL_STEP_THRESHOLD)
+#define FREQUENCY_ERROR_SLOW_THRESHOLD         (MOTOR_MOVE_FULL_STEP_THRESHOLD * 2)
 
 
 
@@ -208,42 +208,36 @@ signed char FrequencyErrorFilterSlowResponse() {
 
   signed int average;
   unsigned char location;
-  
-  if ((afc_data.pulses_on < 4) || (afc_data.valid_data_history_count < 4)) {
-    // There are not at least 8 valid data points for the current motor position.  Return Zero
+  unsigned int pulsesToFilter;
+  unsigned int x;
+
+  if (afc_data.pulses_on < 4000) {
+      pulsesToFilter = 4;
+  }
+  else {
+      pulsesToFilter = 8;
+  }
+
+  if ((afc_data.pulses_on < pulsesToFilter) || (afc_data.valid_data_history_count < pulsesToFilter)) {
+    // There are not at least 4 valid data points for the current motor position.  Return Zero
     return 0;
   } else {
     location = afc_data.data_pointer;
+    average = 0;
     // Remember that data_pointer points to the NEXT place to put data, so most recent data is n-1
     // If number of pulses is greater than or equal to 8, Average the prevous 8 data points
-    location--;
-    location &= 0x0F;
-    average = afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
-    location--;
-    location &= 0x0F;
-    average += afc_data.frequency_error_history[location];
+    for (x = 0; x < pulsesToFilter; x++){
+        location--;
+        location &= 0x0F;
+        average += afc_data.frequency_error_history[location];
+    }
     
-      
-    average >>= 2;
-    
+    if (pulsesToFilter == 8){
+        average >>= 3;
+    } else if (pulsesToFilter == 4) {
+        average >>= 2;
+    }
+
     return average;
   }
 }
