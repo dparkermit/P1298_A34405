@@ -8,9 +8,9 @@
                                                    // Make this number larger to provide more stable action (at the expense of accuracy)
                                                    // This number is divided by the microstep ratio so it should be an integer multiple of the micro step ratio
 
-#define SIGMA_DELTA_MINIMUM_ADC_READING        10  // If the sigma & delta readings are both less than we will assume there was no pulse and the error will be set to Zero
+#define SIGMA_DELTA_MINIMUM_ADC_READING        5   // If the sigma & delta readings are both less than we will assume there was no pulse and the error will be set to Zero
 
-#define LINAC_COOLDOWN_OFF_TIME                10  // 1 seconds
+#define LINAC_COOLDOWN_OFF_TIME                5   // 1 seconds
 
 
 

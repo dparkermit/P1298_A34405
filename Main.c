@@ -541,15 +541,15 @@ void DoAnalogInputSample(void) {
 
   case PARAMETER_AFC_OFFSET:
     // Set the Frequency Error offset and store to EEPROM
-    error = adc_analog_value_input >> 8;
-    if (error >= 128) {
-      afc_data.frequency_error_offset = (error-128);
-    } else {
-      error = 128 - error;
-      afc_data.frequency_error_offset = 0;
-      afc_data.frequency_error_offset -= error;
-    }
-    M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET, afc_data.frequency_error_offset);
+    //error = adc_analog_value_input >> 8;
+    //if (error >= 128) {
+    //  afc_data.frequency_error_offset = (error-128);
+    //} else {
+    //  error = 128 - error;
+    //  afc_data.frequency_error_offset = 0;
+    //  afc_data.frequency_error_offset -= error;
+    //}
+    //M24LC64FWriteWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET, afc_data.frequency_error_offset);
     break;
 
   case PARAMETER_PRF:
