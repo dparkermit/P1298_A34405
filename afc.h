@@ -4,7 +4,7 @@
 
 // PARAMETERS TO CONFIGURE THE AFC RESPONSE
 
-#define MOTOR_MOVE_FULL_STEP_THRESHOLD         1   // This is error signal that will cause the motor to move a full step.
+#define MOTOR_MOVE_FULL_STEP_THRESHOLD         2   // This is error signal that will cause the motor to move a full step.
                                                    // Make this number larger to provide more stable action (at the expense of accuracy)
                                                    // This number is divided by the microstep ratio so it should be an integer multiple of the micro step ratio
 

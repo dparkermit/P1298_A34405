@@ -375,9 +375,9 @@ void InitPeripherals(void){
   
 
 
-  afc_data.frequency_error_offset = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET);
+  //afc_data.frequency_error_offset = M24LC64FReadWord(&U23_M24LC64F, EEPROM_REGISTER_ERROR_OFFSET);
+  afc_data.frequency_error_offset = 0;
 
-  
 
 }    
 

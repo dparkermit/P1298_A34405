@@ -5,13 +5,13 @@
 
 
 
-#define MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  128
+#define MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  256
 #define MAX_NUMBER_OF_PULSES_FOR_SECOND_RESPONSE 4000
 
-#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 15)
-#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 10)
-#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 6)
-#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 2)
+#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 9)
+#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 6)
+#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 3)
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
 
 #define FREQUENCY_ERROR_SLOW_THRESHOLD         (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
 
@@ -101,7 +101,7 @@ void DoAFC(void) {
     }
     SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
   } else {
-    afc_data.fast_afc_done = 1;
+    //afc_data.fast_afc_done = 1;
     /*
       The magnetron has pulsing for Number Of Startup Pulses (or the error has reached zero) 
       The tuner is very close to where it should be so we just need to correct for minor drifts
