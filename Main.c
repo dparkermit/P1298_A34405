@@ -207,8 +207,12 @@ void DoStateMachine(void) {
       DoSerialCommand();
       if (afc_data.trigger_complete) {
 	afc_data.trigger_complete = 0;
-	FilterFrequencyErrorData();
-	DoAFC();
+        //if (afc_data.high_energy_pulse) {
+            FilterFrequencyErrorData();
+            DoAFC();
+        //}
+        //else
+        //    SendLoggingDataToUart();
       }
       
       // Look for change of state
@@ -395,6 +399,10 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   signed int error;  
   unsigned int n;
   
+  if (afc_data.high_energy_pulse)
+    afc_data.high_energy_pulse = 0;
+  else
+    afc_data.high_energy_pulse = 1;
   
   // DPARKER DELAY UNTILL WE HAVE A GOOD SIGNAL ON SIGMA/DELTA
   //__delay32(12); // 3uS
@@ -444,8 +452,14 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
 
 
   error = afc_data.sigma_data - afc_data.delta_data;
+  if (!afc_data.high_energy_pulse) {
+      //error >>= 1;
+      error += afc_data.frequency_error_offset;
+  }
+
+
   //error = afc_data.delta_data - afc_data.sigma_data;
-  error += afc_data.frequency_error_offset;
+  //error += afc_data.frequency_error_offset;
   if (error > 127) {
     error = 127;
   } else if ( error < -128) {
@@ -465,14 +479,17 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
     afc_data.valid_data_history_count = 0;
   }
 
-  afc_data.valid_data_history_count++;
-  if (afc_data.valid_data_history_count >= 0x0F) {
-    afc_data.valid_data_history_count = 0x0F;
-  } 
+   //if (afc_data.high_energy_pulse) {
+      afc_data.valid_data_history_count++;
+      if (afc_data.valid_data_history_count >= 0x0F) {
+        afc_data.valid_data_history_count = 0x0F;
+      }
   
-  afc_data.frequency_error_history[afc_data.data_pointer] = error;
-  afc_data.data_pointer++;
-  afc_data.data_pointer &= 0x0F;
+      afc_data.frequency_error_history[afc_data.data_pointer] = error;
+      afc_data.data_pointer++;
+      afc_data.data_pointer &= 0x0F;
+  //}
+  
   afc_data.pulses_on++;
   if (afc_data.pulses_on > 0xFF00) {
     afc_data.pulses_on = 0xFF00;

@@ -30,6 +30,7 @@ typedef struct {
   unsigned int pulses_on;
   unsigned int time_off_100ms_units;
   signed int distance_from_home_at_stop;
+  unsigned char high_energy_pulse;
 } TYPE_AFC_DATA;
 
 
