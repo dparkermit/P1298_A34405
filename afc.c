@@ -6,15 +6,15 @@
 
 
 #define MAX_NUMBER_OF_PULSES_FOR_STARTUP_RESPONSE  256
-#define MAX_NUMBER_OF_PULSES_FOR_SECOND_RESPONSE 4000
+#define MAX_NUMBER_OF_PULSES_FOR_SECOND_RESPONSE 800
 
-#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 9)
-#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 6)
-#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 3)
-#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS      (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
+#define FREQUENCY_ERROR_FAST_MOVE_4_STEPS       (MOTOR_MOVE_FULL_STEP_THRESHOLD * 9)
+#define FREQUENCY_ERROR_FAST_MOVE_3_STEPS       (MOTOR_MOVE_FULL_STEP_THRESHOLD * 6)
+#define FREQUENCY_ERROR_FAST_MOVE_2_STEPS       (MOTOR_MOVE_FULL_STEP_THRESHOLD * 3)
+#define FREQUENCY_ERROR_FAST_MOVE_1_STEPS       (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
 
-#define FREQUENCY_ERROR_SLOW_THRESHOLD         (MOTOR_MOVE_FULL_STEP_THRESHOLD * 1)
-
+#define FREQUENCY_ERROR_SLOW_THRESHOLD          3
+#define FREQUENCY_ERROR_SLOW_THRESHOLD_POSITIVE (MOTOR_MOVE_FULL_STEP_THRESHOLD * 10)              //So the AFC does not oscillate during slow mode
 
 
 
@@ -145,7 +145,7 @@ void DoAFC(void) {
 	 We should wait for that process to complete before telling it to move again
       */
       new_target_position = afc_motor.current_position;
-      if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD) {
+      if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_SLOW_THRESHOLD_POSITIVE) {
 	if (new_target_position <= 0xFFFE) {
 	  new_target_position++;
 	  SetMotorTarget(POSITION_TYPE_ABSOLUTE_POSITION, new_target_position);
