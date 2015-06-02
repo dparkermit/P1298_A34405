@@ -165,6 +165,7 @@
         <property key="save-temps" value="false"/>
       </C30Global>
       <ICD3PlatformTool>
+        <property key="firmware.download.all" value="false"/>
       </ICD3PlatformTool>
     </conf>
   </confs>

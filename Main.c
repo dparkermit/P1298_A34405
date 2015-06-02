@@ -482,6 +482,8 @@ void __attribute__((interrupt, shadow, no_auto_psv)) _INT0Interrupt(void) {
   afc_data.trigger_complete = 1;
   }
   _INT0IF = 0;
+
+  SendLoggingDataToUart();
 }
 
 
