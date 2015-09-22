@@ -69,7 +69,7 @@ void DoAFC(void) {
     } else if (afc_data.frequency_error_filtered > FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
       new_target_position += 1 * MICRO_STEPPING_RESOLUTION;
     } else if (afc_data.frequency_error_filtered > -FREQUENCY_ERROR_FAST_MOVE_1_STEPS) {
-      if (afc_data.pulses_on >= 4) {
+      if (afc_data.pulses_on >= 100) {
 	afc_data.fast_afc_done = 1;
 	// DPARKER - I think we need to clear the previous data here
 	// We don't want to be in the case where the data from fast samples is still in the history and we use that for slow evaluation
