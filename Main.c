@@ -167,7 +167,7 @@ void DoStateMachine(void) {
       }
       if (manual_control_ccw_pulse_input_ready && (PIN_STEP_COUNTER_CLOCKWISE == ILL_STEP_PIN_ACTIVE)) {
 	manual_control_ccw_pulse_input_ready = 0;
-	SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, 1);
+	SetMotorTarget(POSITION_TYPE_RELATIVE_COUNTER_CLOCKWISE, 10);
       }
 
       // Look for a pulse on the clockwise pin
@@ -176,7 +176,7 @@ void DoStateMachine(void) {
       }
       if (manual_control_cw_pulse_input_ready && (PIN_STEP_CLOCKWISE == ILL_STEP_PIN_ACTIVE)) {
 	manual_control_cw_pulse_input_ready = 0;
-	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, 1);
+	SetMotorTarget(POSITION_TYPE_RELATIVE_CLOCKWISE, 10);
       }
 
       // Look for a pulse on the sample pin

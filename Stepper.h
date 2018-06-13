@@ -15,7 +15,7 @@
 #define MOTOR_LOW_POWER_DELAY      .1          // This is the time (in seconds) that the system wait with no motor movement to switch to low power mode
                                                // This value must be less than or equal to 2^16-1 times the PWM period (about 1.6 seconds at 40KHz)
 #define MOTOR_MINIMUM_POSITION      100        // Under normal operation (not Zero Find) the motor position can not go below this value
-#define MOTOR_MAXIMUM_POSITION      800        // Under normal operation (not Zero Find) the motor position can not go above this value
+#define MOTOR_MAXIMUM_POSITION      900        // Under normal operation (not Zero Find) the motor position can not go above this value
 
 #define T2_CONFIG_VALUE                     0b1000000000110000   // Timer On and 256 Prescale
 #define AFC_MOTOR_T2_PERIOD_VALUE           (unsigned int)(FCY/256/STEPS_PER_SECOND/MICRO_STEPPING_RESOLUTION)
